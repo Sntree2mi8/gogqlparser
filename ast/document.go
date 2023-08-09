@@ -1,40 +1,22 @@
 package ast
 
-type SchemaDefinition struct {
-	Description                  string
-	Directives                   Directives
-	RootOperationTypeDefinitions []RootOperationTypeDefinition
+type TypeSystemExtensionDocument struct {
+	SchemaDefinitions    []SchemaDefinition
+	TypeDefinitions      []TypeDefinition
+	DirectiveDefinitions []DirectiveDefinition
 }
 
-type DirectiveDefinition struct{}
+// 以下、未整理
 
-type Directives []Directive
-
-type Directive struct {
-	Name      string
-	Arguments Arguments
-}
-
-type Arguments []Argument
-
-type Argument struct {
-	Name  string
-	Value string
-}
-
-type OperationType int
+type RootOperationTypeKind int
 
 const (
-	OperationTypeQuery OperationType = iota
+	OperationTypeQuery RootOperationTypeKind = iota
 	OperationTypeMutation
 	OperationTypeSubscription
 )
 
-type Type struct {
-	Name string
-}
-
 type RootOperationTypeDefinition struct {
-	OperationType OperationType
-	Type          Type
+	OperationType RootOperationTypeKind
+	Type          string
 }
