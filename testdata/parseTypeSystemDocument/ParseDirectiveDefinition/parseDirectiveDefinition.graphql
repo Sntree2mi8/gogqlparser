@@ -1,0 +1,29 @@
+directive @directive on SCHEMA
+    | SCALAR
+    | OBJECT
+    | FIELD_DEFINITION
+    | ARGUMENT_DEFINITION
+    | INTERFACE
+    | UNION
+    | ENUM
+    | ENUM_VALUE
+    | INPUT_OBJECT
+    | INPUT_FIELD_DEFINITION
+directive @repeatableDirective repeatable on SCHEMA
+directive @argumentDirective(
+    argStr: String!,
+    argStrNullable: String,
+    argStrArray: [String!]!,
+    argStrNullableArray: [String]!,
+    argStrNullableArrayNullable: [String],
+    argStrNullableDefault: String = "default",
+    argInt: Int!,
+    argIntNullable: Int,
+    argIntNullableDefault: Int = 0,
+    argFloat: Float!,
+    argFloatNullable: Float,
+    argFloatNullableDefault: Float = 0.0,
+    argBool: Boolean!,
+    argBoolNullable: Boolean,
+    argBoolNullableDefault: Boolean = false,
+) on SCHEMA

@@ -14,6 +14,30 @@ func New() *Parser {
 	return &Parser{}
 }
 
+type lexerWrapper struct {
+	lexer     *gogqllexer.Lexer
+	keepToken *gogqllexer.Token
+}
+
+func (l *lexerWrapper) NextToken() gogqllexer.Token {
+	if l.keepToken != nil {
+		t := *l.keepToken
+		l.keepToken = nil
+		return t
+	}
+
+	return l.lexer.NextToken()
+}
+
+func (l *lexerWrapper) PeekToken() gogqllexer.Token {
+	if l.keepToken == nil {
+		t := l.lexer.NextToken()
+		l.keepToken = &t
+	}
+
+	return *l.keepToken
+}
+
 func (p *Parser) ParseTypeSystem(sources []*ast.Source) (*ast.TypeSystemExtensionDocument, error) {
 	typeSystemDocs := make([]*ast.TypeSystemExtensionDocument, len(sources))
 	// TODO: parallelize
@@ -37,17 +61,13 @@ func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtens
 		TypeDefinitions:      []ast.TypeDefinition{},
 		DirectiveDefinitions: []ast.DirectiveDefinition{},
 	}
-	l := gogqllexer.New(strings.NewReader(src.Body))
+	l := &lexerWrapper{lexer: gogqllexer.New(strings.NewReader(src.Body))}
 
 ParseSystemDocumentLoop:
 	for {
 		t := l.NextToken()
 		if t.Kind == gogqllexer.EOF {
 			break ParseSystemDocumentLoop
-		}
-		if t.Kind == gogqllexer.Comment {
-			// commentが入ると色々だるいので一旦無視してコメント以外をちゃんとparseできることをまずは達成する
-			continue ParseSystemDocumentLoop
 		}
 
 		// 一番最初にdescriptionが来る可能性がある
@@ -59,18 +79,91 @@ ParseSystemDocumentLoop:
 			if t.Kind == gogqllexer.EOF {
 				break
 			}
-			if t.Kind == gogqllexer.Comment {
-				// commentが入ると色々だるいので一旦無視してコメント以外をちゃんとparseできることをまずは達成する
-				continue
-			}
 		}
 
-		// CHECK: lexerにもpeekが絶対に必要になるのか
 		if t.Kind != gogqllexer.Name {
 			return nil, fmt.Errorf("unexpected token %+v", t)
 		}
 
 		switch t.Value {
+		case "directive":
+			t = l.NextToken()
+			if t.Kind != gogqllexer.At {
+				return nil, fmt.Errorf("unexpected token %+v", t)
+			}
+			t = l.NextToken()
+			if t.Kind != gogqllexer.Name {
+				return nil, fmt.Errorf("unexpected token %+v", t)
+			}
+
+			directiveName := t.Value
+			isRepeatable := false
+
+			t = l.PeekToken()
+			var err error
+			var inputValueDefinitions []ast.InputValueDefinition
+			if t.Kind == gogqllexer.ParenL {
+				inputValueDefinitions, err = parseArgumentsDefinition(l)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			t = l.PeekToken()
+			if t.Kind != gogqllexer.Name {
+				return nil, fmt.Errorf("unexpected token %+v", t)
+			}
+
+			if t.Value == "repeatable" {
+				isRepeatable = true
+				l.NextToken()
+			}
+
+			t = l.NextToken()
+			if t.Kind != gogqllexer.Name {
+				return nil, fmt.Errorf("unexpected token %+v", t)
+			} else if t.Value != "on" {
+				return nil, fmt.Errorf("unexpected token %+v", t)
+			}
+
+			t = l.NextToken()
+			if t.Kind != gogqllexer.Name {
+				return nil, fmt.Errorf("unexpected token %+v", t)
+			}
+			dLocations := make([]ast.DirectiveLocation, 0)
+			dl := parsDirectiveLocation(t.Value)
+			if dl == ast.DirectiveLocationUnknown {
+				return nil, fmt.Errorf("unexpected token %+v", t)
+			}
+			dLocations = append(dLocations, dl)
+
+			for {
+				t = l.PeekToken()
+				if t.Kind != gogqllexer.Pipe {
+					break
+				} else {
+					l.NextToken()
+				}
+
+				t = l.NextToken()
+				if t.Kind != gogqllexer.Name {
+					return nil, fmt.Errorf("unexpected token %+v", t)
+				}
+				dl := parsDirectiveLocation(t.Value)
+				if dl == ast.DirectiveLocationUnknown {
+					return nil, fmt.Errorf("unexpected token %+v", t)
+				}
+				dLocations = append(dLocations, dl)
+			}
+
+			d.DirectiveDefinitions = append(d.DirectiveDefinitions, ast.DirectiveDefinition{
+				Description:         description,
+				Name:                directiveName,
+				ArgumentsDefinition: inputValueDefinitions,
+				IsRepeatable:        isRepeatable,
+				DirectiveLocations:  dLocations,
+			})
+
 		case "schema":
 			// TODO: schemaだった場合にこれからのトークンになくてはならない並び順がある
 			// TODO: directiveを一旦飛ばしているのであとで実装する
@@ -83,9 +176,6 @@ ParseSystemDocumentLoop:
 		ParseRootOperationLoop:
 			for {
 				t = l.NextToken()
-				if t.Kind == gogqllexer.Comment {
-					continue ParseRootOperationLoop
-				}
 				switch t.Kind {
 				case gogqllexer.BraceR:
 					break ParseRootOperationLoop
@@ -158,4 +248,165 @@ ParseSystemDocumentLoop:
 	}
 
 	return d, nil
+}
+
+func parsDirectiveLocation(v string) ast.DirectiveLocation {
+	switch v {
+	case "QUERY":
+		return ast.DirectiveLocationQuery
+	case "MUTATION":
+		return ast.DirectiveLocationMutation
+	case "SUBSCRIPTION":
+		return ast.DirectiveLocationSubscription
+	case "FIELD":
+		return ast.DirectiveLocationField
+	case "FRAGMENT_DEFINITION":
+		return ast.DirectiveLocationFragmentDefinition
+	case "FRAGMENT_SPREAD":
+		return ast.DirectiveLocationFragmentSpread
+	case "INLINE_FRAGMENT":
+		return ast.DirectiveLocationInlineFragment
+	case "VARIABLE_DEFINITION":
+		return ast.DirectiveLocationVariableDefinition
+
+	case "SCHEMA":
+		return ast.DirectiveLocationSchema
+	case "SCALAR":
+		return ast.DirectiveLocationScalar
+	case "OBJECT":
+		return ast.DirectiveLocationObject
+	case "FIELD_DEFINITION":
+		return ast.DirectiveLocationFieldDefinition
+	case "ARGUMENT_DEFINITION":
+		return ast.DirectiveLocationArgumentDefinition
+	case "INTERFACE":
+		return ast.DirectiveLocationInterface
+	case "UNION":
+		return ast.DirectiveLocationUnion
+	case "ENUM":
+		return ast.DirectiveLocationEnum
+	case "ENUM_VALUE":
+		return ast.DirectiveLocationEnumValue
+	case "INPUT_OBJECT":
+		return ast.DirectiveLocationInputObject
+	case "INPUT_FIELD_DEFINITION":
+		return ast.DirectiveLocationInputFieldDefinition
+	default:
+		return ast.DirectiveLocationUnknown
+	}
+}
+
+//func must(l *lexerWrapper, kind gogqllexer.Kind) (t gogqllexer.Token, err error) {
+//	t = l.NextToken()
+//	if t.Kind != kind {
+//		err = fmt.Errorf("unexpected token %+v", t)
+//	}
+//	return
+//}
+
+func parseInputValueDefinition(l *lexerWrapper, description string) (def ast.InputValueDefinition, err error) {
+	var t gogqllexer.Token
+
+	t = l.NextToken()
+	if t.Kind != gogqllexer.Name {
+		return def, fmt.Errorf("unexpected token %+v", t)
+	}
+	def.Name = t.Value
+
+	if t = l.NextToken(); t.Kind != gogqllexer.Colon {
+		return def, fmt.Errorf("unexpected token %+v", t)
+	}
+
+	argType, err := parseType(l)
+	if err != nil {
+		return def, err
+	}
+	def.Type = argType
+
+	t = l.PeekToken()
+	if t.Kind == gogqllexer.Equal {
+		l.NextToken()
+		t = l.NextToken()
+		switch t.Kind {
+		case gogqllexer.Int, gogqllexer.Float, gogqllexer.String, gogqllexer.BlockString, gogqllexer.Name:
+			def.RawDefaultValue = t.Value
+		default:
+		}
+	}
+
+	// TODO: parse directives
+
+	def.Description = description
+
+	return def, nil
+}
+
+func parseArgumentsDefinition(l *lexerWrapper) (defs []ast.InputValueDefinition, err error) {
+	t := l.NextToken()
+	if t.Kind != gogqllexer.ParenL {
+		return defs, err
+	}
+
+	for {
+		inputValDescription := ""
+
+		t = l.PeekToken()
+		switch t.Kind {
+		case gogqllexer.String, gogqllexer.BlockString:
+			inputValDescription = t.Value
+			l.NextToken()
+		case gogqllexer.Name:
+			ivd, err := parseInputValueDefinition(l, inputValDescription)
+			if err != nil {
+				return defs, err
+			}
+			defs = append(defs, ivd)
+		case gogqllexer.ParenR:
+			if len(defs) == 0 {
+				return defs, fmt.Errorf("unexpected token %+v", t)
+			}
+			l.NextToken()
+			return defs, nil
+		default:
+			return defs, fmt.Errorf("unexpected token %+v", t)
+		}
+	}
+}
+
+func parseType(l *lexerWrapper) (t ast.Type, err error) {
+	var token gogqllexer.Token
+
+	token = l.NextToken()
+	switch token.Kind {
+	case gogqllexer.Name:
+		t.NamedType = token.Value
+		token = l.PeekToken()
+		if token.Kind == gogqllexer.Bang {
+			t.NotNull = true
+			l.NextToken()
+		}
+	case gogqllexer.BracketL:
+		t.ListType = &ast.Type{}
+
+		elmType, err := parseType(l)
+		if err != nil {
+			return t, err
+		}
+		t.ListType = &elmType
+
+		token = l.NextToken()
+		if token.Kind != gogqllexer.BracketR {
+			return t, fmt.Errorf("unexpected token %+v", token)
+		}
+
+		token = l.PeekToken()
+		if token.Kind == gogqllexer.Bang {
+			t.NotNull = true
+			l.NextToken()
+		}
+	default:
+		return t, fmt.Errorf("unexpected token %+v", token)
+	}
+
+	return t, nil
 }
