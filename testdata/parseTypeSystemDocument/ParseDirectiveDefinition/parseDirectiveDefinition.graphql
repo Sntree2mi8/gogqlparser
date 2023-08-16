@@ -10,6 +10,7 @@ directive @directive on SCHEMA
     | INPUT_OBJECT
     | INPUT_FIELD_DEFINITION
 directive @repeatableDirective repeatable on SCHEMA
+directive @sampleDirective(text: String) on INPUT_FIELD_DEFINITION
 directive @argumentDirective(
     argStr: String!,
     argStrNullable: String,
@@ -17,6 +18,7 @@ directive @argumentDirective(
     argStrNullableArray: [String]!,
     argStrNullableArrayNullable: [String],
     argStrNullableDefault: String = "default",
+    argStrWithDirective: String! @sampleDirective(text: "text"),
     argInt: Int!,
     argIntNullable: Int,
     argIntNullableDefault: Int = 0,

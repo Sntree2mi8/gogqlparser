@@ -229,7 +229,7 @@ ParseSystemDocumentLoop:
 			}
 			schemaDef := ast.SchemaDefinition{
 				Description:                  description,
-				Directives:                   ast.Directives{},
+				Directives:                   []ast.Directive{},
 				RootOperationTypeDefinitions: []ast.RootOperationTypeDefinition{},
 			}
 			for k, v := range rootOperationMap {
@@ -296,14 +296,6 @@ func parsDirectiveLocation(v string) ast.DirectiveLocation {
 	}
 }
 
-//func must(l *lexerWrapper, kind gogqllexer.Kind) (t gogqllexer.Token, err error) {
-//	t = l.NextToken()
-//	if t.Kind != kind {
-//		err = fmt.Errorf("unexpected token %+v", t)
-//	}
-//	return
-//}
-
 func parseInputValueDefinition(l *lexerWrapper, description string) (def ast.InputValueDefinition, err error) {
 	var t gogqllexer.Token
 
@@ -334,11 +326,72 @@ func parseInputValueDefinition(l *lexerWrapper, description string) (def ast.Inp
 		}
 	}
 
-	// TODO: parse directives
-
+	directives := make([]ast.Directive, 0)
+	for {
+		t = l.PeekToken()
+		if t.Kind != gogqllexer.At {
+			break
+		}
+		d, err := parseDirective(l)
+		if err != nil {
+			return def, err
+		}
+		directives = append(directives, d)
+	}
+	if len(directives) > 0 {
+		def.Directives = directives
+	}
 	def.Description = description
 
 	return def, nil
+}
+
+func parseDirective(l *lexerWrapper) (d ast.Directive, err error) {
+	t := l.NextToken()
+	if t.Kind != gogqllexer.At {
+		return d, fmt.Errorf("unexpected token %+v", t)
+	}
+
+	t = l.NextToken()
+	if t.Kind != gogqllexer.Name {
+		return d, fmt.Errorf("unexpected token %+v", t)
+	}
+	d.Name = t.Value
+
+	args := make([]ast.Argument, 0)
+	t = l.PeekToken()
+	if t.Kind == gogqllexer.ParenL {
+		arg := ast.Argument{}
+		l.NextToken()
+		t = l.NextToken()
+		if t.Kind != gogqllexer.Name {
+			return d, fmt.Errorf("unexpected token %+v", t)
+		}
+		arg.Name = t.Value
+
+		t = l.NextToken()
+		if t.Kind != gogqllexer.Colon {
+			return d, fmt.Errorf("unexpected token %+v", t)
+		}
+
+		t = l.NextToken()
+		switch t.Kind {
+		default:
+			return d, fmt.Errorf("unexpected token %+v", t)
+		case gogqllexer.Int, gogqllexer.Float, gogqllexer.Name, gogqllexer.String, gogqllexer.BlockString:
+			arg.Value = t.Value
+		}
+
+		t = l.NextToken()
+		if t.Kind != gogqllexer.ParenR {
+			return d, fmt.Errorf("unexpected token %+v", t)
+		}
+
+		args = append(args, arg)
+		d.Arguments = args
+	}
+
+	return d, err
 }
 
 func parseArgumentsDefinition(l *lexerWrapper) (defs []ast.InputValueDefinition, err error) {

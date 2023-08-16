@@ -92,9 +92,7 @@ func TestParser_parseTypeSystemDocument_ParseDirectiveDefinition(t *testing.T) {
 				TypeDefinitions:   []ast.TypeDefinition{},
 				DirectiveDefinitions: []ast.DirectiveDefinition{
 					{
-						Description:  "",
-						Name:         "directive",
-						IsRepeatable: false,
+						Name: "directive",
 						DirectiveLocations: []ast.DirectiveLocation{
 							ast.DirectiveLocationSchema,
 							ast.DirectiveLocationScalar,
@@ -110,11 +108,25 @@ func TestParser_parseTypeSystemDocument_ParseDirectiveDefinition(t *testing.T) {
 						},
 					},
 					{
-						Description:  "",
 						Name:         "repeatableDirective",
 						IsRepeatable: true,
 						DirectiveLocations: []ast.DirectiveLocation{
 							ast.DirectiveLocationSchema,
+						},
+					},
+					{
+						Description: "",
+						Name:        "sampleDirective",
+						ArgumentsDefinition: []ast.InputValueDefinition{
+							{
+								Name: "text",
+								Type: ast.Type{
+									NamedType: "String",
+								},
+							},
+						},
+						DirectiveLocations: []ast.DirectiveLocation{
+							ast.DirectiveLocationInputFieldDefinition,
 						},
 					},
 					{
@@ -172,6 +184,24 @@ func TestParser_parseTypeSystemDocument_ParseDirectiveDefinition(t *testing.T) {
 									NotNull:   false,
 								},
 								RawDefaultValue: `"default"`,
+							},
+							{
+								Name: "argStrWithDirective",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+								Directives: []ast.Directive{
+									{
+										Name: "sampleDirective",
+										Arguments: []ast.Argument{
+											{
+												Name:  "text",
+												Value: `"text"`,
+											},
+										},
+									},
+								},
 							},
 							{
 								Name: "argInt",

@@ -19,7 +19,17 @@ type InputValueDefinition struct {
 	Name            string
 	Type            Type
 	RawDefaultValue string
-	Directives      Directives
+	Directives      []Directive
+}
+
+type Directive struct {
+	Name      string
+	Arguments []Argument
+}
+
+type Argument struct {
+	Name  string
+	Value string
 }
 
 type DirectiveLocation int
@@ -50,18 +60,3 @@ const (
 	DirectiveLocationInlineFragment
 	DirectiveLocationVariableDefinition
 )
-
-// 以下はdefinitionではない
-type Directives []Directive
-
-type Directive struct {
-	Name      string
-	Arguments Arguments
-}
-
-type Arguments []Argument
-
-type Argument struct {
-	Name  string
-	Value string
-}
