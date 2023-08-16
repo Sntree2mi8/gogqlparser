@@ -2,6 +2,6 @@ package ast
 
 type SchemaDefinition struct {
 	Description                  string
-	Directives                   Directives
+	Directives                   []Directive
 	RootOperationTypeDefinitions []RootOperationTypeDefinition
 }

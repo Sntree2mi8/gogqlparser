@@ -1,0 +1,2 @@
+schema: parseDirectiveDefinition.graphql
+documents: './*.graphql'
