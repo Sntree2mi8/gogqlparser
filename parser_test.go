@@ -317,14 +317,14 @@ schema {
 
 type Query {
 	"this is description"
-    example: String
+    example: String @deprecated(reason: "this is reason")
 }
 
 type Mutation {
 	"""
 	this is description
 	"""
-    example: String
+    example: String @deprecated
 }
 
 type Subscription {
@@ -379,6 +379,17 @@ type Subscription {
 								Type: ast.Type{
 									NamedType: "String",
 								},
+								Directives: []ast.Directive{
+									{
+										Name: "deprecated",
+										Arguments: []ast.Argument{
+											{
+												Name:  "reason",
+												Value: "\"this is reason\"",
+											},
+										},
+									},
+								},
 							},
 						},
 					},
@@ -390,6 +401,11 @@ type Subscription {
 								Name:        "example",
 								Type: ast.Type{
 									NamedType: "String",
+								},
+								Directives: []ast.Directive{
+									{
+										Name: "deprecated",
+									},
 								},
 							},
 						},
@@ -403,6 +419,7 @@ type Subscription {
 								Type: ast.Type{
 									NamedType: "String",
 								},
+								Directives: []ast.Directive{},
 							},
 						},
 					},

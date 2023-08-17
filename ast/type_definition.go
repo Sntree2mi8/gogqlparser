@@ -37,8 +37,8 @@ type FieldDefinition struct {
 	Description string
 	Name        string
 	//ArgumentDefinitions []*InputValueDefinition
-	Type Type
-	//Directives          []*Directive
+	Type       Type
+	Directives []Directive
 }
 
 type ObjectTypeDefinition struct {

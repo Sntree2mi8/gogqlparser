@@ -33,9 +33,10 @@ func MergeTypeSystemDocument(documents []*ast.TypeSystemExtensionDocument) *ast.
 
 // https://spec.graphql.org/October2021/#FieldDefinition
 // TODO: parse arguments
-// TODO: parse directives
 func parseFieldDefinition(l *lexerWrapper) (d *ast.FieldDefinition, err error) {
-	d = &ast.FieldDefinition{}
+	d = &ast.FieldDefinition{
+		Directives: make([]ast.Directive, 0),
+	}
 
 	// description is optional
 	if err = maybe(l, func(t gogqllexer.Token) bool {
@@ -70,6 +71,20 @@ func parseFieldDefinition(l *lexerWrapper) (d *ast.FieldDefinition, err error) {
 	// parse type
 	if d.Type, err = parseType(l); err != nil {
 		return nil, err
+	}
+
+	// directives are optional
+	for {
+		t := l.PeekToken()
+		if t.Kind == gogqllexer.At {
+			directive, err := parseDirective(l)
+			if err != nil {
+				return nil, err
+			}
+			d.Directives = append(d.Directives, directive)
+			continue
+		}
+		break
 	}
 
 	return d, err
