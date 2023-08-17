@@ -55,6 +55,40 @@ func MergeTypeSystemDocument(documents []*ast.TypeSystemExtensionDocument) *ast.
 	return nil
 }
 
+func parseTypeObjectDefinition(l *lexerWrapper) (d *ast.ObjectTypeDefinition, err error) {
+	d = &ast.ObjectTypeDefinition{}
+
+	t := l.NextToken()
+	if t.Kind != gogqllexer.Name && t.Value != "type" {
+		return nil, fmt.Errorf("unexpected token %+v", t)
+	}
+
+	t = l.NextToken()
+	if t.Kind != gogqllexer.Name {
+		return nil, fmt.Errorf("unexpected token %+v", t)
+	}
+	d.Name = t.Value
+
+	t = l.NextToken()
+	if t.Kind != gogqllexer.BraceL {
+		return nil, fmt.Errorf("unexpected token %+v", t)
+	}
+
+	for {
+		t = l.NextToken()
+		if t.Kind == gogqllexer.BraceR {
+			break
+		}
+		if t.Kind == gogqllexer.EOF {
+			return nil, fmt.Errorf("unexpected token %+v", t)
+		}
+
+		// TODO: parse field definition
+	}
+
+	return d, nil
+}
+
 func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtensionDocument, error) {
 	d := &ast.TypeSystemExtensionDocument{
 		SchemaDefinitions:    []ast.SchemaDefinition{},
@@ -65,7 +99,7 @@ func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtens
 
 ParseSystemDocumentLoop:
 	for {
-		t := l.NextToken()
+		t := l.PeekToken()
 		if t.Kind == gogqllexer.EOF {
 			break ParseSystemDocumentLoop
 		}
@@ -86,7 +120,15 @@ ParseSystemDocumentLoop:
 		}
 
 		switch t.Value {
+		case "type":
+			typeObjectDefinition, err := parseTypeObjectDefinition(l)
+			if err != nil {
+				return nil, err
+			}
+			d.TypeDefinitions[typeObjectDefinition.Name] = typeObjectDefinition
+
 		case "directive":
+			l.NextToken()
 			t = l.NextToken()
 			if t.Kind != gogqllexer.At {
 				return nil, fmt.Errorf("unexpected token %+v", t)
@@ -165,6 +207,7 @@ ParseSystemDocumentLoop:
 			})
 
 		case "schema":
+			l.NextToken()
 			// TODO: schemaだった場合にこれからのトークンになくてはならない並び順がある
 			// TODO: directiveを一旦飛ばしているのであとで実装する
 			t = l.NextToken()
