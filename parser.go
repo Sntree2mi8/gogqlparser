@@ -58,7 +58,7 @@ func MergeTypeSystemDocument(documents []*ast.TypeSystemExtensionDocument) *ast.
 func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtensionDocument, error) {
 	d := &ast.TypeSystemExtensionDocument{
 		SchemaDefinitions:    []ast.SchemaDefinition{},
-		TypeDefinitions:      []ast.TypeDefinition{},
+		TypeDefinitions:      map[string]ast.TypeDefinition{},
 		DirectiveDefinitions: []ast.DirectiveDefinition{},
 	}
 	l := &lexerWrapper{lexer: gogqllexer.New(strings.NewReader(src.Body))}

@@ -50,7 +50,7 @@ A simple GraphQL schema which is well described.
 						},
 					},
 				},
-				TypeDefinitions:      []ast.TypeDefinition{},
+				TypeDefinitions:      map[string]ast.TypeDefinition{},
 				DirectiveDefinitions: []ast.DirectiveDefinition{},
 			},
 			wantErr: false,
@@ -89,7 +89,7 @@ func TestParser_parseTypeSystemDocument_ParseDirectiveDefinition(t *testing.T) {
 			schemaPath: path.Join(testdataDir, "parseDirectiveDefinition.graphql"),
 			want: &ast.TypeSystemExtensionDocument{
 				SchemaDefinitions: []ast.SchemaDefinition{},
-				TypeDefinitions:   []ast.TypeDefinition{},
+				TypeDefinitions:   map[string]ast.TypeDefinition{},
 				DirectiveDefinitions: []ast.DirectiveDefinition{
 					{
 						Name: "directive",
@@ -292,6 +292,99 @@ func TestParser_parseTypeSystemDocument_ParseDirectiveDefinition(t *testing.T) {
 				Name: tt.schemaPath,
 				Body: string(d),
 			})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseTypeSystemDocument() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			// diffがわかりづらいので足した。機能的に必要としているわけじゃないのであとで消す。
+			if df := cmp.Diff(got, tt.want); df != "" {
+				t.Errorf("parseTypeSystemDocument() diff = %v", df)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseTypeSystemDocument() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParser_parseTypeSystemDocument_parseRootOperationTypesSchema(t *testing.T) {
+	parseRootOperationTypesSchema := `
+schema {
+    query: Query
+    mutation: Mutation
+    subscription: Subscription
+}
+
+type Query {
+    example: String
+}
+
+type Mutation {
+    example: String
+}
+
+type Subscription {
+    example: String
+}
+`
+
+	type args struct {
+		src *ast.Source
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *ast.TypeSystemExtensionDocument
+		wantErr bool
+	}{
+		{
+			name: "parse root operation types schema",
+			args: args{
+				src: &ast.Source{
+					Name: "parseRootOperationTypesSchema.graphql",
+					Body: parseRootOperationTypesSchema,
+				},
+			},
+			want: &ast.TypeSystemExtensionDocument{
+				SchemaDefinitions: []ast.SchemaDefinition{
+					{
+						Directives: []ast.Directive{},
+						RootOperationTypeDefinitions: []ast.RootOperationTypeDefinition{
+							{
+								OperationType: ast.OperationTypeQuery,
+								Type:          "Query",
+							},
+							{
+								OperationType: ast.OperationTypeMutation,
+								Type:          "Mutation",
+							},
+							{
+								OperationType: ast.OperationTypeSubscription,
+								Type:          "Subscription",
+							},
+						},
+					},
+				},
+				TypeDefinitions: map[string]ast.TypeDefinition{
+					"Query": &ast.ObjectTypeDefinition{
+						Name: "Query",
+					},
+					"Mutation": &ast.ObjectTypeDefinition{
+						Name: "Mutation",
+					},
+					"Subscription": &ast.ObjectTypeDefinition{
+						Name: "Subscription",
+					},
+				},
+				DirectiveDefinitions: []ast.DirectiveDefinition{},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Parser{}
+			got, err := p.parseTypeSystemDocument(tt.args.src)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseTypeSystemDocument() error = %v, wantErr %v", err, tt.wantErr)
 				return
