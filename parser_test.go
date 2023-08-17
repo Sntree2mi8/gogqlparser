@@ -316,15 +316,19 @@ schema {
 }
 
 type Query {
+	"this is description"
     example: String
 }
 
 type Mutation {
+	"""
+	this is description
+	"""
     example: String
 }
 
 type Subscription {
-    example: String
+    "this is description" example: String
 }
 `
 
@@ -370,7 +374,8 @@ type Subscription {
 						Name: "Query",
 						FieldDefinitions: []*ast.FieldDefinition{
 							{
-								Name: "example",
+								Description: "\"this is description\"",
+								Name:        "example",
 								Type: ast.Type{
 									NamedType: "String",
 								},
@@ -381,7 +386,8 @@ type Subscription {
 						Name: "Mutation",
 						FieldDefinitions: []*ast.FieldDefinition{
 							{
-								Name: "example",
+								Description: "\"\"\"\n\tthis is description\n\t\"\"\"",
+								Name:        "example",
 								Type: ast.Type{
 									NamedType: "String",
 								},
@@ -392,7 +398,8 @@ type Subscription {
 						Name: "Subscription",
 						FieldDefinitions: []*ast.FieldDefinition{
 							{
-								Name: "example",
+								Description: "\"this is description\"",
+								Name:        "example",
 								Type: ast.Type{
 									NamedType: "String",
 								},

@@ -39,7 +39,7 @@ func parseFieldDefinition(l *lexerWrapper) (d *ast.FieldDefinition, err error) {
 
 	// description is optional
 	if err = maybe(l, func(t gogqllexer.Token) bool {
-		if t.Kind == gogqllexer.String {
+		if t.Kind == gogqllexer.String || t.Kind == gogqllexer.BlockString {
 			d.Description = t.Value
 			return true
 		}
