@@ -14,30 +14,6 @@ func New() *Parser {
 	return &Parser{}
 }
 
-type lexerWrapper struct {
-	lexer     *gogqllexer.Lexer
-	keepToken *gogqllexer.Token
-}
-
-func (l *lexerWrapper) NextToken() gogqllexer.Token {
-	if l.keepToken != nil {
-		t := *l.keepToken
-		l.keepToken = nil
-		return t
-	}
-
-	return l.lexer.NextToken()
-}
-
-func (l *lexerWrapper) PeekToken() gogqllexer.Token {
-	if l.keepToken == nil {
-		t := l.lexer.NextToken()
-		l.keepToken = &t
-	}
-
-	return *l.keepToken
-}
-
 func (p *Parser) ParseTypeSystem(sources []*ast.Source) (*ast.TypeSystemExtensionDocument, error) {
 	typeSystemDocs := make([]*ast.TypeSystemExtensionDocument, len(sources))
 	// TODO: parallelize
@@ -55,35 +31,99 @@ func MergeTypeSystemDocument(documents []*ast.TypeSystemExtensionDocument) *ast.
 	return nil
 }
 
+// https://spec.graphql.org/October2021/#FieldDefinition
+// TODO: parse arguments
+// TODO: parse directives
+func parseFieldDefinition(l *lexerWrapper) (d *ast.FieldDefinition, err error) {
+	d = &ast.FieldDefinition{}
+
+	// description is optional
+	if err = maybe(l, func(t gogqllexer.Token) bool {
+		if t.Kind == gogqllexer.String {
+			d.Description = t.Value
+			return true
+		}
+		return false
+	}); err != nil {
+		return nil, err
+	}
+
+	if err = mustBe(
+		l,
+		// name is required
+		func(t gogqllexer.Token) bool {
+			if t.Kind == gogqllexer.Name {
+				d.Name = t.Value
+				return true
+			}
+			return false
+		},
+		// colon is required
+		func(t gogqllexer.Token) bool {
+			return t.Kind == gogqllexer.Colon
+		},
+	); err != nil {
+		return nil, err
+	}
+
+	// type is required
+	// parse type
+	if d.Type, err = parseType(l); err != nil {
+		return nil, err
+	}
+
+	return d, err
+}
+
+// https://spec.graphql.org/October2021/#sec-Objects
+// TODO: parse implements interface
+// TODO: parse directives
 func parseTypeObjectDefinition(l *lexerWrapper) (d *ast.ObjectTypeDefinition, err error) {
-	d = &ast.ObjectTypeDefinition{}
-
-	t := l.NextToken()
-	if t.Kind != gogqllexer.Name && t.Value != "type" {
-		return nil, fmt.Errorf("unexpected token %+v", t)
+	d = &ast.ObjectTypeDefinition{
+		FieldDefinitions: make([]*ast.FieldDefinition, 0),
 	}
 
-	t = l.NextToken()
-	if t.Kind != gogqllexer.Name {
-		return nil, fmt.Errorf("unexpected token %+v", t)
-	}
-	d.Name = t.Value
+	var t gogqllexer.Token
 
-	t = l.NextToken()
-	if t.Kind != gogqllexer.BraceL {
-		return nil, fmt.Errorf("unexpected token %+v", t)
+	err = mustBe(
+		l,
+		// start with "type"
+		func(t gogqllexer.Token) bool {
+			return t.Kind == gogqllexer.Name && t.Value == "type"
+		},
+		// name of object is required
+		func(t gogqllexer.Token) bool {
+			if t.Kind == gogqllexer.Name {
+				d.Name = t.Value
+				return true
+			}
+			return false
+		},
+		// open brace is required
+		func(t gogqllexer.Token) bool {
+			return t.Kind == gogqllexer.BraceL
+		},
+	)
+	if err != nil {
+		return nil, err
 	}
 
 	for {
-		t = l.NextToken()
+		t = l.PeekToken()
 		if t.Kind == gogqllexer.BraceR {
+			l.NextToken()
 			break
 		}
 		if t.Kind == gogqllexer.EOF {
 			return nil, fmt.Errorf("unexpected token %+v", t)
 		}
 
-		// TODO: parse field definition
+		fieldDefinition, err := parseFieldDefinition(l)
+		if err != nil {
+			return nil, err
+		}
+
+		d.FieldDefinitions = append(d.FieldDefinitions, fieldDefinition)
 	}
 
 	return d, nil

@@ -368,12 +368,36 @@ type Subscription {
 				TypeDefinitions: map[string]ast.TypeDefinition{
 					"Query": &ast.ObjectTypeDefinition{
 						Name: "Query",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "example",
+								Type: ast.Type{
+									NamedType: "String",
+								},
+							},
+						},
 					},
 					"Mutation": &ast.ObjectTypeDefinition{
 						Name: "Mutation",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "example",
+								Type: ast.Type{
+									NamedType: "String",
+								},
+							},
+						},
 					},
 					"Subscription": &ast.ObjectTypeDefinition{
 						Name: "Subscription",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "example",
+								Type: ast.Type{
+									NamedType: "String",
+								},
+							},
+						},
 					},
 				},
 				DirectiveDefinitions: []ast.DirectiveDefinition{},
