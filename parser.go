@@ -32,63 +32,83 @@ func MergeTypeSystemDocument(documents []*ast.TypeSystemExtensionDocument) *ast.
 }
 
 // https://spec.graphql.org/October2021/#FieldDefinition
-// TODO: parse arguments
 func parseFieldDefinition(l *lexerWrapper) (d *ast.FieldDefinition, err error) {
 	d = &ast.FieldDefinition{
 		Directives: make([]ast.Directive, 0),
 	}
 
-	if err = maybe(l, func(t gogqllexer.Token) bool {
-		if t.Kind == gogqllexer.String || t.Kind == gogqllexer.BlockString {
+	if err = l.PeekAndMayBe(
+		[]gogqllexer.Kind{gogqllexer.String, gogqllexer.BlockString},
+		func(t gogqllexer.Token, advanceLexer func()) error {
+			defer advanceLexer()
+
 			d.Description = t.Value
-			return true
-		}
-		return false
-	}); err != nil {
+			return nil
+		},
+	); err != nil {
 		return nil, err
 	}
 
-	if err = mustBe(l, func(t gogqllexer.Token) bool {
-		if t.Kind == gogqllexer.Name {
+	if err = l.PeekAndMustBe(
+		[]gogqllexer.Kind{gogqllexer.Name},
+		func(t gogqllexer.Token, advanceLexer func()) error {
+			defer advanceLexer()
+
 			d.Name = t.Value
-			return true
-		}
-		return false
-	}); err != nil {
+			return nil
+		},
+	); err != nil {
 		return nil, err
 	}
 
-	t := l.PeekToken()
-	if t.Kind == gogqllexer.ParenL {
-		if d.ArgumentDefinition, err = parseArgumentsDefinition(l); err != nil {
-			return nil, err
-		}
-	}
-
-	if err = mustBe(l, func(t gogqllexer.Token) bool {
-		return t.Kind == gogqllexer.Colon
-	}); err != nil {
-		return nil, err
-	}
-
-	// type is required
-	// parse type
-	if d.Type, err = parseType(l); err != nil {
-		return nil, err
-	}
-
-	// directives are optional
-	for {
-		t := l.PeekToken()
-		if t.Kind == gogqllexer.At {
-			directive, err := parseDirective(l)
-			if err != nil {
-				return nil, err
+	if err = l.PeekAndMayBe(
+		[]gogqllexer.Kind{gogqllexer.ParenL},
+		func(t gogqllexer.Token, advanceLexer func()) error {
+			if d.ArgumentDefinition, err = parseArgumentsDefinition(l); err != nil {
+				return err
 			}
-			d.Directives = append(d.Directives, directive)
-			continue
-		}
-		break
+			return nil
+		},
+	); err != nil {
+		return nil, err
+	}
+
+	if err = l.Skip(gogqllexer.Colon); err != nil {
+		return nil, err
+	}
+
+	if err = l.PeekAndMustBe(
+		[]gogqllexer.Kind{gogqllexer.Name},
+		func(t gogqllexer.Token, advanceLexer func()) error {
+			if d.Type, err = parseType(l); err != nil {
+				return err
+			}
+			return nil
+		},
+	); err != nil {
+		return nil, err
+	}
+
+	if err = l.PeekAndMayBe(
+		[]gogqllexer.Kind{gogqllexer.At},
+		func(t gogqllexer.Token, advanceLexer func()) error {
+			for {
+				t := l.PeekToken()
+				if t.Kind == gogqllexer.At {
+					directive, err := parseDirective(l)
+					if err != nil {
+						return err
+					}
+					d.Directives = append(d.Directives, directive)
+					continue
+				}
+				break
+			}
+
+			return nil
+		},
+	); err != nil {
+		return nil, err
 	}
 
 	return d, err
@@ -102,47 +122,45 @@ func parseTypeObjectDefinition(l *lexerWrapper) (d *ast.ObjectTypeDefinition, er
 		FieldDefinitions: make([]*ast.FieldDefinition, 0),
 	}
 
-	var t gogqllexer.Token
-
-	err = mustBe(
-		l,
-		// start with "type"
-		func(t gogqllexer.Token) bool {
-			return t.Kind == gogqllexer.Name && t.Value == "type"
-		},
-		// name of object is required
-		func(t gogqllexer.Token) bool {
-			if t.Kind == gogqllexer.Name {
-				d.Name = t.Value
-				return true
-			}
-			return false
-		},
-		// open brace is required
-		func(t gogqllexer.Token) bool {
-			return t.Kind == gogqllexer.BraceL
-		},
-	)
-	if err != nil {
+	if err = l.SkipKeyword("type"); err != nil {
 		return nil, err
 	}
 
-	for {
-		t = l.PeekToken()
-		if t.Kind == gogqllexer.BraceR {
+	if err = l.PeekAndMustBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
+		defer advanceLexer()
+		d.Name = t.Value
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	if err = l.PeekAndMustBe(
+		[]gogqllexer.Kind{gogqllexer.BraceL},
+		func(t gogqllexer.Token, advanceLexer func()) error {
 			l.NextToken()
-			break
-		}
-		if t.Kind == gogqllexer.EOF {
-			return nil, fmt.Errorf("unexpected token %+v", t)
-		}
 
-		fieldDefinition, err := parseFieldDefinition(l)
-		if err != nil {
-			return nil, err
-		}
+			for {
+				t = l.PeekToken()
+				if t.Kind == gogqllexer.BraceR {
+					l.NextToken()
+					break
+				}
+				if t.Kind == gogqllexer.EOF {
+					return fmt.Errorf("unexpected token %+v", t)
+				}
 
-		d.FieldDefinitions = append(d.FieldDefinitions, fieldDefinition)
+				fieldDefinition, err := parseFieldDefinition(l)
+				if err != nil {
+					return err
+				}
+
+				d.FieldDefinitions = append(d.FieldDefinitions, fieldDefinition)
+			}
+
+			return nil
+		},
+	); err != nil {
+		return nil, err
 	}
 
 	return d, nil

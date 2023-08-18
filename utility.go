@@ -3,6 +3,7 @@ package gogqlparser
 import (
 	"fmt"
 	"github.com/Sntree2mi8/gogqllexer"
+	"slices"
 )
 
 type lexerWrapper struct {
@@ -29,26 +30,34 @@ func (l *lexerWrapper) PeekToken() gogqllexer.Token {
 	return *l.keepToken
 }
 
-type mustBeCallback func(t gogqllexer.Token) (ok bool)
-
-func mustBe(l *lexerWrapper, callbacks ...mustBeCallback) error {
-	for _, callback := range callbacks {
-		t := l.NextToken()
-		if !callback(t) {
-			return fmt.Errorf("unexpected token %v", t)
-		}
+func (l *lexerWrapper) PeekAndMayBe(kinds []gogqllexer.Kind, callback func(t gogqllexer.Token, advanceLexer func()) error) error {
+	t := l.PeekToken()
+	if slices.Contains(kinds, t.Kind) {
+		return callback(t, func() { l.NextToken() })
 	}
 	return nil
 }
 
-type maybeCallback func(t gogqllexer.Token) (ok bool)
+func (l *lexerWrapper) PeekAndMustBe(kinds []gogqllexer.Kind, callback func(t gogqllexer.Token, advanceLexer func()) error) error {
+	t := l.PeekToken()
+	if slices.Contains(kinds, t.Kind) {
+		return callback(t, func() { l.NextToken() })
+	}
+	return fmt.Errorf("unexpected token %v", t)
+}
 
-func maybe(l *lexerWrapper, callbacks ...maybeCallback) error {
-	for _, callback := range callbacks {
-		t := l.PeekToken()
-		if callback(t) {
-			l.NextToken()
-		}
+func (l *lexerWrapper) Skip(kind gogqllexer.Kind) error {
+	t := l.NextToken()
+	if t.Kind != kind {
+		return fmt.Errorf("unexpected token %v", t)
+	}
+	return nil
+}
+
+func (l *lexerWrapper) SkipKeyword(keyword string) error {
+	t := l.NextToken()
+	if t.Kind != gogqllexer.Name || t.Value != keyword {
+		return fmt.Errorf("unexpected token %v", t)
 	}
 	return nil
 }
