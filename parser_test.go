@@ -317,7 +317,7 @@ schema {
 
 type Query {
 	"this is description"
-    example: String @deprecated(reason: "this is reason")
+    example(arg1: String!, arg2: String = "hasDefault"): String @deprecated(reason: "this is reason")
 }
 
 type Mutation {
@@ -378,6 +378,22 @@ type Subscription {
 								Name:        "example",
 								Type: ast.Type{
 									NamedType: "String",
+								},
+								ArgumentDefinition: []ast.InputValueDefinition{
+									{
+										Name: "arg1",
+										Type: ast.Type{
+											NamedType: "String",
+											NotNull:   true,
+										},
+									},
+									{
+										Name: "arg2",
+										Type: ast.Type{
+											NamedType: "String",
+										},
+										RawDefaultValue: "\"hasDefault\"",
+									},
 								},
 								Directives: []ast.Directive{
 									{

@@ -38,7 +38,6 @@ func parseFieldDefinition(l *lexerWrapper) (d *ast.FieldDefinition, err error) {
 		Directives: make([]ast.Directive, 0),
 	}
 
-	// description is optional
 	if err = maybe(l, func(t gogqllexer.Token) bool {
 		if t.Kind == gogqllexer.String || t.Kind == gogqllexer.BlockString {
 			d.Description = t.Value
@@ -49,21 +48,26 @@ func parseFieldDefinition(l *lexerWrapper) (d *ast.FieldDefinition, err error) {
 		return nil, err
 	}
 
-	if err = mustBe(
-		l,
-		// name is required
-		func(t gogqllexer.Token) bool {
-			if t.Kind == gogqllexer.Name {
-				d.Name = t.Value
-				return true
-			}
-			return false
-		},
-		// colon is required
-		func(t gogqllexer.Token) bool {
-			return t.Kind == gogqllexer.Colon
-		},
-	); err != nil {
+	if err = mustBe(l, func(t gogqllexer.Token) bool {
+		if t.Kind == gogqllexer.Name {
+			d.Name = t.Value
+			return true
+		}
+		return false
+	}); err != nil {
+		return nil, err
+	}
+
+	t := l.PeekToken()
+	if t.Kind == gogqllexer.ParenL {
+		if d.ArgumentDefinition, err = parseArgumentsDefinition(l); err != nil {
+			return nil, err
+		}
+	}
+
+	if err = mustBe(l, func(t gogqllexer.Token) bool {
+		return t.Kind == gogqllexer.Colon
+	}); err != nil {
 		return nil, err
 	}
 
