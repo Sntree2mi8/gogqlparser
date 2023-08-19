@@ -6,36 +6,31 @@ import (
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
 
-// https://spec.graphql.org/October2021/#sec-Objects
-// TODO: parse description
-// TODO: parse directives
-func ParseTypeObjectDefinition(l *LexerWrapper) (d *ast.ObjectTypeDefinition, err error) {
-	d = &ast.ObjectTypeDefinition{
-		FieldDefinitions: make([]*ast.FieldDefinition, 0),
-	}
-
-	if err = l.SkipKeyword("type"); err != nil {
+func parseInterfaceImplementations(l *LexerWrapper) (interfaces []string, err error) {
+	if err = l.SkipKeyword("implements"); err != nil {
 		return nil, err
 	}
 
-	if err = l.PeekAndMustBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
-		defer advanceLexer()
-		d.Name = t.Value
-		return nil
-	}); err != nil {
+	// implements at least one interface
+	l.SkipIf(gogqllexer.Amp)
+	if err = l.PeekAndMustBe(
+		[]gogqllexer.Kind{gogqllexer.Name},
+		func(t gogqllexer.Token, advanceLexer func()) error {
+			defer advanceLexer()
+
+			interfaces = append(interfaces, t.Value)
+			return nil
+		},
+	); err != nil {
 		return nil, err
 	}
 
-	// parse implements interface
-	if err = l.PeekAndMayBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
-		if err = l.SkipKeyword("implements"); err != nil {
-			return err
+	// read more interfaces
+	for {
+		if skip := l.SkipIf(gogqllexer.Amp); !skip {
+			break
 		}
 
-		interfaces := make([]string, 0)
-
-		// implements at least one interface
-		l.SkipIf(gogqllexer.Amp)
 		if err = l.PeekAndMustBe(
 			[]gogqllexer.Kind{gogqllexer.Name},
 			func(t gogqllexer.Token, advanceLexer func()) error {
@@ -45,35 +40,37 @@ func ParseTypeObjectDefinition(l *LexerWrapper) (d *ast.ObjectTypeDefinition, er
 				return nil
 			},
 		); err != nil {
-			return err
+			return nil, err
 		}
+	}
 
-		// read more interfaces
-		for {
-			if skip := l.SkipIf(gogqllexer.Amp); !skip {
-				break
-			}
+	return interfaces, nil
+}
 
-			if err = l.PeekAndMustBe(
-				[]gogqllexer.Kind{gogqllexer.Name},
-				func(t gogqllexer.Token, advanceLexer func()) error {
-					defer advanceLexer()
+// https://spec.graphql.org/October2021/#sec-Objects
+func ParseObjectTypeDefinition(l *LexerWrapper, description string) (d *ast.ObjectTypeDefinition, err error) {
+	d = &ast.ObjectTypeDefinition{
+		Description: description,
+	}
 
-					interfaces = append(interfaces, t.Value)
-					return nil
-				},
-			); err != nil {
-				return err
-			}
-		}
-
-		if len(interfaces) > 0 {
-			d.Interfaces = interfaces
-		}
-
-		return nil
-	}); err != nil {
+	if err = l.SkipKeyword("type"); err != nil {
 		return nil, err
+	}
+
+	if d.Name, err = l.ReadNameValue(); err != nil {
+		return nil, err
+	}
+
+	if l.CheckKeyword("implements") {
+		if d.Interfaces, err = parseInterfaceImplementations(l); err != nil {
+			return nil, err
+		}
+	}
+
+	if l.CheckKind(gogqllexer.At) {
+		if d.Directives, err = parseDirectives(l); err != nil {
+			return nil, err
+		}
 	}
 
 	if err = l.PeekAndMustBe(

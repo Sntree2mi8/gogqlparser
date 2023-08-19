@@ -44,6 +44,7 @@ type FieldDefinition struct {
 type ObjectTypeDefinition struct {
 	Description      string
 	Name             string
+	Directives       []Directive
 	FieldDefinitions []*FieldDefinition
 	Interfaces       []string
 }

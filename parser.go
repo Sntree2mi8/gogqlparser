@@ -65,7 +65,7 @@ ParseSystemDocumentLoop:
 
 		switch t.Value {
 		case "type":
-			typeObjectDefinition, err := parser.ParseTypeObjectDefinition(l)
+			typeObjectDefinition, err := parser.ParseObjectTypeDefinition(l, description)
 			if err != nil {
 				return nil, err
 			}

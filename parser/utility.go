@@ -70,6 +70,23 @@ func (l *LexerWrapper) SkipIf(kind gogqllexer.Kind) (skip bool) {
 	return t.Kind == kind
 }
 
+func (l *LexerWrapper) CheckKind(kind gogqllexer.Kind) bool {
+	return l.PeekToken().Kind == kind
+}
+
+func (l *LexerWrapper) CheckKeyword(keyword string) bool {
+	t := l.PeekToken()
+	return t.Kind == gogqllexer.Name && t.Value == keyword
+}
+
+func (l *LexerWrapper) ReadNameValue() (string, error) {
+	t := l.NextToken()
+	if t.Kind != gogqllexer.Name {
+		return "", fmt.Errorf("unexpected token %v", t)
+	}
+	return t.Value, nil
+}
+
 func (l *LexerWrapper) SkipKeyword(keyword string) error {
 	t := l.NextToken()
 	if t.Kind != gogqllexer.Name || t.Value != keyword {
