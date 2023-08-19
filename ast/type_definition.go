@@ -79,6 +79,14 @@ func (d *UnionTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
 type EnumTypeDefinition struct {
 	Description string
 	Name        string
+	Directives  []Directive
+	EnumValue   []EnumValueDefinition
+}
+
+type EnumValueDefinition struct {
+	Description string
+	Value       EnumValue
+	Directives  []Directive
 }
 
 func (d *EnumTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
