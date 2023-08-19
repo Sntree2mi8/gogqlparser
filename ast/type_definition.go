@@ -68,6 +68,8 @@ func (d *InterfaceTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
 type UnionTypeDefinition struct {
 	Description string
 	Name        string
+	Directives  []Directive
+	MemberTypes []Type
 }
 
 func (d *UnionTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
