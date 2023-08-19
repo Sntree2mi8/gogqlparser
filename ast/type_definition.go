@@ -33,9 +33,19 @@ func (d *ScalarTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
 	return TypeDefinitionKindScalar
 }
 
+type FieldDefinition struct {
+	Description        string
+	Name               string
+	ArgumentDefinition []InputValueDefinition
+	Type               Type
+	Directives         []Directive
+}
+
 type ObjectTypeDefinition struct {
-	Description string
-	Name        string
+	Description      string
+	Name             string
+	FieldDefinitions []*FieldDefinition
+	Interfaces       []string
 }
 
 func (d *ObjectTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
@@ -43,8 +53,10 @@ func (d *ObjectTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
 }
 
 type InterfaceTypeDefinition struct {
-	Description string
-	Name        string
+	Description      string
+	Name             string
+	FieldDefinitions []*FieldDefinition
+	Interfaces       []string
 }
 
 func (d *InterfaceTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {

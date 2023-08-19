@@ -42,15 +42,10 @@ func TestParser_parseTypeSystemDocument_ParseSchemaDefinition(t *testing.T) {
 A simple GraphQL schema which is well described.
 """`,
 						Directives: []ast.Directive{},
-						RootOperationTypeDefinitions: []ast.RootOperationTypeDefinition{
-							{
-								OperationType: ast.OperationTypeQuery,
-								Type:          "Query",
-							},
-						},
+						Query:      &ast.RootOperationTypeDefinition{Type: "Query"},
 					},
 				},
-				TypeDefinitions:      []ast.TypeDefinition{},
+				TypeDefinitions:      map[string]ast.TypeDefinition{},
 				DirectiveDefinitions: []ast.DirectiveDefinition{},
 			},
 			wantErr: false,
@@ -89,7 +84,7 @@ func TestParser_parseTypeSystemDocument_ParseDirectiveDefinition(t *testing.T) {
 			schemaPath: path.Join(testdataDir, "parseDirectiveDefinition.graphql"),
 			want: &ast.TypeSystemExtensionDocument{
 				SchemaDefinitions: []ast.SchemaDefinition{},
-				TypeDefinitions:   []ast.TypeDefinition{},
+				TypeDefinitions:   map[string]ast.TypeDefinition{},
 				DirectiveDefinitions: []ast.DirectiveDefinition{
 					{
 						Name: "directive",
@@ -292,6 +287,225 @@ func TestParser_parseTypeSystemDocument_ParseDirectiveDefinition(t *testing.T) {
 				Name: tt.schemaPath,
 				Body: string(d),
 			})
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseTypeSystemDocument() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			// diffがわかりづらいので足した。機能的に必要としているわけじゃないのであとで消す。
+			if df := cmp.Diff(got, tt.want); df != "" {
+				t.Errorf("parseTypeSystemDocument() diff = %v", df)
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseTypeSystemDocument() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestParser_parseTypeSystemDocument_parseRootOperationTypesSchema(t *testing.T) {
+	parseRootOperationTypesSchema := `
+schema {
+    query: Query
+    mutation: Mutation
+    subscription: Subscription
+}
+
+type Query {
+	"this is description"
+    example(arg1: String!, arg2: String = "hasDefault"): String @deprecated(reason: "this is reason")
+}
+
+type Mutation {
+	"""
+	this is description
+	"""
+    example: String @deprecated
+}
+
+type Subscription {
+    "this is description" example: String
+}
+
+type SuperUser implements User & Operator {
+	name: String!
+	id: String!
+}
+
+type NormalUser implements & User {
+	name: String!
+}
+
+interface User {
+	name: String!
+}
+
+interface Operator {
+	id: String!
+}
+`
+
+	type args struct {
+		src *ast.Source
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    *ast.TypeSystemExtensionDocument
+		wantErr bool
+	}{
+		{
+			name: "parse root operation types schema",
+			args: args{
+				src: &ast.Source{
+					Name: "parseRootOperationTypesSchema.graphql",
+					Body: parseRootOperationTypesSchema,
+				},
+			},
+			want: &ast.TypeSystemExtensionDocument{
+				SchemaDefinitions: []ast.SchemaDefinition{
+					{
+						Directives:   []ast.Directive{},
+						Query:        &ast.RootOperationTypeDefinition{Type: "Query"},
+						Mutation:     &ast.RootOperationTypeDefinition{Type: "Mutation"},
+						Subscription: &ast.RootOperationTypeDefinition{Type: "Subscription"},
+					},
+				},
+				TypeDefinitions: map[string]ast.TypeDefinition{
+					"Query": &ast.ObjectTypeDefinition{
+						Name: "Query",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Description: "\"this is description\"",
+								Name:        "example",
+								Type: ast.Type{
+									NamedType: "String",
+								},
+								ArgumentDefinition: []ast.InputValueDefinition{
+									{
+										Name: "arg1",
+										Type: ast.Type{
+											NamedType: "String",
+											NotNull:   true,
+										},
+									},
+									{
+										Name: "arg2",
+										Type: ast.Type{
+											NamedType: "String",
+										},
+										RawDefaultValue: "\"hasDefault\"",
+									},
+								},
+								Directives: []ast.Directive{
+									{
+										Name: "deprecated",
+										Arguments: []ast.Argument{
+											{
+												Name:  "reason",
+												Value: "\"this is reason\"",
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+					"Mutation": &ast.ObjectTypeDefinition{
+						Name: "Mutation",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Description: "\"\"\"\n\tthis is description\n\t\"\"\"",
+								Name:        "example",
+								Type: ast.Type{
+									NamedType: "String",
+								},
+								Directives: []ast.Directive{
+									{
+										Name: "deprecated",
+									},
+								},
+							},
+						},
+					},
+					"Subscription": &ast.ObjectTypeDefinition{
+						Name: "Subscription",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Description: "\"this is description\"",
+								Name:        "example",
+								Type: ast.Type{
+									NamedType: "String",
+								},
+							},
+						},
+					},
+					"SuperUser": &ast.ObjectTypeDefinition{
+						Name:       "SuperUser",
+						Interfaces: []string{"User", "Operator"},
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "name",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+							{
+								Name: "id",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+						},
+					},
+					"NormalUser": &ast.ObjectTypeDefinition{
+						Name:       "NormalUser",
+						Interfaces: []string{"User"},
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "name",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+						},
+					},
+					"User": &ast.InterfaceTypeDefinition{
+						Name: "User",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "name",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+						},
+					},
+					"Operator": &ast.InterfaceTypeDefinition{
+						Name: "Operator",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "id",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+						},
+					},
+				},
+				DirectiveDefinitions: []ast.DirectiveDefinition{},
+			},
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &Parser{}
+			got, err := p.parseTypeSystemDocument(tt.args.src)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseTypeSystemDocument() error = %v, wantErr %v", err, tt.wantErr)
 				return
