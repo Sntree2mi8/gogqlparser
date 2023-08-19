@@ -42,12 +42,7 @@ func TestParser_parseTypeSystemDocument_ParseSchemaDefinition(t *testing.T) {
 A simple GraphQL schema which is well described.
 """`,
 						Directives: []ast.Directive{},
-						RootOperationTypeDefinitions: []ast.RootOperationTypeDefinition{
-							{
-								OperationType: ast.OperationTypeQuery,
-								Type:          "Query",
-							},
-						},
+						Query:      &ast.RootOperationTypeDefinition{Type: "Query"},
 					},
 				},
 				TypeDefinitions:      map[string]ast.TypeDefinition{},
@@ -330,6 +325,23 @@ type Mutation {
 type Subscription {
     "this is description" example: String
 }
+
+type SuperUser implements User & Operator {
+	name: String!
+	id: String!
+}
+
+type NormalUser implements & User {
+	name: String!
+}
+
+interface User {
+	name: String!
+}
+
+interface Operator {
+	id: String!
+}
 `
 
 	type args struct {
@@ -352,21 +364,10 @@ type Subscription {
 			want: &ast.TypeSystemExtensionDocument{
 				SchemaDefinitions: []ast.SchemaDefinition{
 					{
-						Directives: []ast.Directive{},
-						RootOperationTypeDefinitions: []ast.RootOperationTypeDefinition{
-							{
-								OperationType: ast.OperationTypeQuery,
-								Type:          "Query",
-							},
-							{
-								OperationType: ast.OperationTypeMutation,
-								Type:          "Mutation",
-							},
-							{
-								OperationType: ast.OperationTypeSubscription,
-								Type:          "Subscription",
-							},
-						},
+						Directives:   []ast.Directive{},
+						Query:        &ast.RootOperationTypeDefinition{Type: "Query"},
+						Mutation:     &ast.RootOperationTypeDefinition{Type: "Mutation"},
+						Subscription: &ast.RootOperationTypeDefinition{Type: "Subscription"},
 					},
 				},
 				TypeDefinitions: map[string]ast.TypeDefinition{
@@ -435,7 +436,63 @@ type Subscription {
 								Type: ast.Type{
 									NamedType: "String",
 								},
-								Directives: []ast.Directive{},
+							},
+						},
+					},
+					"SuperUser": &ast.ObjectTypeDefinition{
+						Name:       "SuperUser",
+						Interfaces: []string{"User", "Operator"},
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "name",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+							{
+								Name: "id",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+						},
+					},
+					"NormalUser": &ast.ObjectTypeDefinition{
+						Name:       "NormalUser",
+						Interfaces: []string{"User"},
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "name",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+						},
+					},
+					"User": &ast.InterfaceTypeDefinition{
+						Name: "User",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "name",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
+							},
+						},
+					},
+					"Operator": &ast.InterfaceTypeDefinition{
+						Name: "Operator",
+						FieldDefinitions: []*ast.FieldDefinition{
+							{
+								Name: "id",
+								Type: ast.Type{
+									NamedType: "String",
+									NotNull:   true,
+								},
 							},
 						},
 					},
