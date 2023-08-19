@@ -1,51 +1,9 @@
 package parser
 
 import (
-	"fmt"
 	"github.com/Sntree2mi8/gogqllexer"
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
-
-func parseInterfaceImplementations(l *LexerWrapper) (interfaces []string, err error) {
-	if err = l.SkipKeyword("implements"); err != nil {
-		return nil, err
-	}
-
-	// implements at least one interface
-	l.SkipIf(gogqllexer.Amp)
-	if err = l.PeekAndMustBe(
-		[]gogqllexer.Kind{gogqllexer.Name},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			defer advanceLexer()
-
-			interfaces = append(interfaces, t.Value)
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	// read more interfaces
-	for {
-		if skip := l.SkipIf(gogqllexer.Amp); !skip {
-			break
-		}
-
-		if err = l.PeekAndMustBe(
-			[]gogqllexer.Kind{gogqllexer.Name},
-			func(t gogqllexer.Token, advanceLexer func()) error {
-				defer advanceLexer()
-
-				interfaces = append(interfaces, t.Value)
-				return nil
-			},
-		); err != nil {
-			return nil, err
-		}
-	}
-
-	return interfaces, nil
-}
 
 // https://spec.graphql.org/October2021/#sec-Objects
 func ParseObjectTypeDefinition(l *LexerWrapper, description string) (d *ast.ObjectTypeDefinition, err error) {
@@ -62,7 +20,7 @@ func ParseObjectTypeDefinition(l *LexerWrapper, description string) (d *ast.Obje
 	}
 
 	if l.CheckKeyword("implements") {
-		if d.Interfaces, err = parseInterfaceImplementations(l); err != nil {
+		if d.Interfaces, err = parseImplementsInterfaces(l); err != nil {
 			return nil, err
 		}
 	}
@@ -76,26 +34,9 @@ func ParseObjectTypeDefinition(l *LexerWrapper, description string) (d *ast.Obje
 	if err = l.PeekAndMustBe(
 		[]gogqllexer.Kind{gogqllexer.BraceL},
 		func(t gogqllexer.Token, advanceLexer func()) error {
-			l.NextToken()
-
-			for {
-				t = l.PeekToken()
-				if t.Kind == gogqllexer.BraceR {
-					l.NextToken()
-					break
-				}
-				if t.Kind == gogqllexer.EOF {
-					return fmt.Errorf("unexpected token %+v", t)
-				}
-
-				fieldDefinition, err := parseFieldDefinition(l)
-				if err != nil {
-					return err
-				}
-
-				d.FieldDefinitions = append(d.FieldDefinitions, fieldDefinition)
+			if d.FieldDefinitions, err = parseFieldsDefinition(l); err != nil {
+				return err
 			}
-
 			return nil
 		},
 	); err != nil {

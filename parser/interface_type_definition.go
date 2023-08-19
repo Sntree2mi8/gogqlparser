@@ -1,102 +1,42 @@
 package parser
 
 import (
-	"fmt"
 	"github.com/Sntree2mi8/gogqllexer"
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
 
 // https://spec.graphql.org/October2021/#sec-Interfaces
-// TODO: parse description
-// TODO: parse directives
-func ParseTypeInterfaceDefinition(l *LexerWrapper) (d *ast.InterfaceTypeDefinition, err error) {
+func ParseInterfaceTypeDefinition(l *LexerWrapper, description string) (d *ast.InterfaceTypeDefinition, err error) {
 	d = &ast.InterfaceTypeDefinition{}
+
+	d.Description = description
 
 	if err = l.SkipKeyword("interface"); err != nil {
 		return nil, err
 	}
 
-	if err = l.PeekAndMustBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
-		defer advanceLexer()
-		d.Name = t.Value
-		return nil
-	}); err != nil {
+	if d.Name, err = l.ReadNameValue(); err != nil {
 		return nil, err
 	}
 
-	// parse implements interface
-	if err = l.PeekAndMayBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
-		if err = l.SkipKeyword("implements"); err != nil {
-			return err
+	if l.CheckKeyword("implements") {
+		if d.Interfaces, err = parseImplementsInterfaces(l); err != nil {
+			return nil, err
 		}
+	}
 
-		interfaces := make([]string, 0)
-
-		// implements at least one interface
-		l.SkipIf(gogqllexer.Amp)
-		if err = l.PeekAndMustBe(
-			[]gogqllexer.Kind{gogqllexer.Name},
-			func(t gogqllexer.Token, advanceLexer func()) error {
-				defer advanceLexer()
-
-				interfaces = append(interfaces, t.Value)
-				return nil
-			},
-		); err != nil {
-			return err
+	if l.CheckKind(gogqllexer.At) {
+		if d.Directives, err = parseDirectives(l); err != nil {
+			return nil, err
 		}
-
-		// read more interfaces
-		for {
-			if skip := l.SkipIf(gogqllexer.Amp); !skip {
-				break
-			}
-
-			if err = l.PeekAndMustBe(
-				[]gogqllexer.Kind{gogqllexer.Name},
-				func(t gogqllexer.Token, advanceLexer func()) error {
-					defer advanceLexer()
-
-					interfaces = append(interfaces, t.Value)
-					return nil
-				},
-			); err != nil {
-				return err
-			}
-		}
-
-		if len(interfaces) > 0 {
-			d.Interfaces = interfaces
-		}
-
-		return nil
-	}); err != nil {
-		return nil, err
 	}
 
 	if err = l.PeekAndMustBe(
 		[]gogqllexer.Kind{gogqllexer.BraceL},
 		func(t gogqllexer.Token, advanceLexer func()) error {
-			l.NextToken()
-
-			for {
-				t = l.PeekToken()
-				if t.Kind == gogqllexer.BraceR {
-					l.NextToken()
-					break
-				}
-				if t.Kind == gogqllexer.EOF {
-					return fmt.Errorf("unexpected token %+v", t)
-				}
-
-				fieldDefinition, err := parseFieldDefinition(l)
-				if err != nil {
-					return err
-				}
-
-				d.FieldDefinitions = append(d.FieldDefinitions, fieldDefinition)
+			if d.FieldDefinitions, err = parseFieldsDefinition(l); err != nil {
+				return err
 			}
-
 			return nil
 		},
 	); err != nil {
