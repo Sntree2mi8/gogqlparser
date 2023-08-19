@@ -76,7 +76,12 @@ ParseSystemDocumentLoop:
 				return nil, err
 			}
 			d.TypeDefinitions[typeInterfaceDefinition.Name] = typeInterfaceDefinition
-
+		case "union":
+			typeUnionDefinition, err := parser.ParseUnionTypeDefinition(l, description)
+			if err != nil {
+				return nil, err
+			}
+			d.TypeDefinitions[typeUnionDefinition.Name] = typeUnionDefinition
 		case "directive":
 			l.NextToken()
 			t = l.NextToken()
