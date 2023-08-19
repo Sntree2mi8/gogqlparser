@@ -94,3 +94,13 @@ func (l *LexerWrapper) SkipKeyword(keyword string) error {
 	}
 	return nil
 }
+
+func (l *LexerWrapper) ReadDescription() (description string, ok bool) {
+	t := l.PeekToken()
+	if t.Kind == gogqllexer.String || t.Kind == gogqllexer.BlockString {
+		l.NextToken()
+		return t.Value, ok
+	}
+
+	return "", false
+}

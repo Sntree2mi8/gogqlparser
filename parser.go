@@ -82,6 +82,12 @@ ParseSystemDocumentLoop:
 				return nil, err
 			}
 			d.TypeDefinitions[typeUnionDefinition.Name] = typeUnionDefinition
+		case "enum":
+			typeEnumDefinition, err := parser.ParseEnumTypeDefinition(l, description)
+			if err != nil {
+				return nil, err
+			}
+			d.TypeDefinitions[typeEnumDefinition.Name] = typeEnumDefinition
 		case "directive":
 			l.NextToken()
 			t = l.NextToken()
