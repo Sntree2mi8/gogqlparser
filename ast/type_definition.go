@@ -56,6 +56,7 @@ func (d *ObjectTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
 type InterfaceTypeDefinition struct {
 	Description      string
 	Name             string
+	Directives       []Directive
 	FieldDefinitions []*FieldDefinition
 	Interfaces       []string
 }

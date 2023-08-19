@@ -71,7 +71,7 @@ ParseSystemDocumentLoop:
 			}
 			d.TypeDefinitions[typeObjectDefinition.Name] = typeObjectDefinition
 		case "interface":
-			typeInterfaceDefinition, err := parser.ParseTypeInterfaceDefinition(l)
+			typeInterfaceDefinition, err := parser.ParseInterfaceTypeDefinition(l, description)
 			if err != nil {
 				return nil, err
 			}
