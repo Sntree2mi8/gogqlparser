@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/Sntree2mi8/gogqllexer"
 	"github.com/Sntree2mi8/gogqlparser/ast"
+	"github.com/Sntree2mi8/gogqlparser/parser"
 	"strings"
 )
 
@@ -31,328 +32,46 @@ func MergeTypeSystemDocument(documents []*ast.TypeSystemExtensionDocument) *ast.
 	return nil
 }
 
-// https://spec.graphql.org/October2021/#FieldDefinition
-func parseFieldDefinition(l *lexerWrapper) (d *ast.FieldDefinition, err error) {
-	d = &ast.FieldDefinition{}
-
-	if err = l.PeekAndMayBe(
-		[]gogqllexer.Kind{gogqllexer.String, gogqllexer.BlockString},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			defer advanceLexer()
-
-			d.Description = t.Value
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	if err = l.PeekAndMustBe(
-		[]gogqllexer.Kind{gogqllexer.Name},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			defer advanceLexer()
-
-			d.Name = t.Value
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	if err = l.PeekAndMayBe(
-		[]gogqllexer.Kind{gogqllexer.ParenL},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			if d.ArgumentDefinition, err = parseArgumentsDefinition(l); err != nil {
-				return err
-			}
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	if err = l.Skip(gogqllexer.Colon); err != nil {
-		return nil, err
-	}
-
-	if err = l.PeekAndMustBe(
-		[]gogqllexer.Kind{gogqllexer.Name},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			if d.Type, err = parseType(l); err != nil {
-				return err
-			}
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	if err = l.PeekAndMayBe(
-		[]gogqllexer.Kind{gogqllexer.At},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			for {
-				t := l.PeekToken()
-				if t.Kind == gogqllexer.At {
-					directive, err := parseDirective(l)
-					if err != nil {
-						return err
-					}
-					d.Directives = append(d.Directives, directive)
-					continue
-				}
-				break
-			}
-
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	return d, err
-}
-
-// https://spec.graphql.org/October2021/#sec-Objects
-// TODO: parse description
-// TODO: parse directives
-func parseTypeObjectDefinition(l *lexerWrapper) (d *ast.ObjectTypeDefinition, err error) {
-	d = &ast.ObjectTypeDefinition{
-		FieldDefinitions: make([]*ast.FieldDefinition, 0),
-	}
-
-	if err = l.SkipKeyword("type"); err != nil {
-		return nil, err
-	}
-
-	if err = l.PeekAndMustBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
-		defer advanceLexer()
-		d.Name = t.Value
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	// parse implements interface
-	if err = l.PeekAndMayBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
-		if err = l.SkipKeyword("implements"); err != nil {
-			return err
-		}
-
-		interfaces := make([]string, 0)
-
-		// implements at least one interface
-		l.SkipIf(gogqllexer.Amp)
-		if err = l.PeekAndMustBe(
-			[]gogqllexer.Kind{gogqllexer.Name},
-			func(t gogqllexer.Token, advanceLexer func()) error {
-				defer advanceLexer()
-
-				interfaces = append(interfaces, t.Value)
-				return nil
-			},
-		); err != nil {
-			return err
-		}
-
-		// read more interfaces
-		for {
-			if skip := l.SkipIf(gogqllexer.Amp); !skip {
-				break
-			}
-
-			if err = l.PeekAndMustBe(
-				[]gogqllexer.Kind{gogqllexer.Name},
-				func(t gogqllexer.Token, advanceLexer func()) error {
-					defer advanceLexer()
-
-					interfaces = append(interfaces, t.Value)
-					return nil
-				},
-			); err != nil {
-				return err
-			}
-		}
-
-		if len(interfaces) > 0 {
-			d.Interfaces = interfaces
-		}
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	if err = l.PeekAndMustBe(
-		[]gogqllexer.Kind{gogqllexer.BraceL},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			l.NextToken()
-
-			for {
-				t = l.PeekToken()
-				if t.Kind == gogqllexer.BraceR {
-					l.NextToken()
-					break
-				}
-				if t.Kind == gogqllexer.EOF {
-					return fmt.Errorf("unexpected token %+v", t)
-				}
-
-				fieldDefinition, err := parseFieldDefinition(l)
-				if err != nil {
-					return err
-				}
-
-				d.FieldDefinitions = append(d.FieldDefinitions, fieldDefinition)
-			}
-
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	return d, nil
-}
-
-// https://spec.graphql.org/October2021/#sec-Interfaces
-// TODO: parse description
-// TODO: parse directives
-func parseTypeInterfaceDefinition(l *lexerWrapper) (d *ast.InterfaceTypeDefinition, err error) {
-	d = &ast.InterfaceTypeDefinition{}
-
-	if err = l.SkipKeyword("interface"); err != nil {
-		return nil, err
-	}
-
-	if err = l.PeekAndMustBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
-		defer advanceLexer()
-		d.Name = t.Value
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	// parse implements interface
-	if err = l.PeekAndMayBe([]gogqllexer.Kind{gogqllexer.Name}, func(t gogqllexer.Token, advanceLexer func()) error {
-		if err = l.SkipKeyword("implements"); err != nil {
-			return err
-		}
-
-		interfaces := make([]string, 0)
-
-		// implements at least one interface
-		l.SkipIf(gogqllexer.Amp)
-		if err = l.PeekAndMustBe(
-			[]gogqllexer.Kind{gogqllexer.Name},
-			func(t gogqllexer.Token, advanceLexer func()) error {
-				defer advanceLexer()
-
-				interfaces = append(interfaces, t.Value)
-				return nil
-			},
-		); err != nil {
-			return err
-		}
-
-		// read more interfaces
-		for {
-			if skip := l.SkipIf(gogqllexer.Amp); !skip {
-				break
-			}
-
-			if err = l.PeekAndMustBe(
-				[]gogqllexer.Kind{gogqllexer.Name},
-				func(t gogqllexer.Token, advanceLexer func()) error {
-					defer advanceLexer()
-
-					interfaces = append(interfaces, t.Value)
-					return nil
-				},
-			); err != nil {
-				return err
-			}
-		}
-
-		if len(interfaces) > 0 {
-			d.Interfaces = interfaces
-		}
-
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-
-	if err = l.PeekAndMustBe(
-		[]gogqllexer.Kind{gogqllexer.BraceL},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			l.NextToken()
-
-			for {
-				t = l.PeekToken()
-				if t.Kind == gogqllexer.BraceR {
-					l.NextToken()
-					break
-				}
-				if t.Kind == gogqllexer.EOF {
-					return fmt.Errorf("unexpected token %+v", t)
-				}
-
-				fieldDefinition, err := parseFieldDefinition(l)
-				if err != nil {
-					return err
-				}
-
-				d.FieldDefinitions = append(d.FieldDefinitions, fieldDefinition)
-			}
-
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
-
-	return d, err
-}
-
 func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtensionDocument, error) {
 	d := &ast.TypeSystemExtensionDocument{
 		SchemaDefinitions:    []ast.SchemaDefinition{},
 		TypeDefinitions:      map[string]ast.TypeDefinition{},
 		DirectiveDefinitions: []ast.DirectiveDefinition{},
 	}
-	l := &lexerWrapper{lexer: gogqllexer.New(strings.NewReader(src.Body))}
+	l := parser.NewLexerWrapper(gogqllexer.New(strings.NewReader(src.Body)))
 
 ParseSystemDocumentLoop:
 	for {
+		var description string
+		if err := l.PeekAndMayBe(
+			[]gogqllexer.Kind{gogqllexer.String, gogqllexer.BlockString},
+			func(t gogqllexer.Token, advanceLexer func()) error {
+				defer advanceLexer()
+
+				description = t.Value
+				return nil
+			},
+		); err != nil {
+			return nil, err
+		}
+
 		t := l.PeekToken()
 		if t.Kind == gogqllexer.EOF {
 			break ParseSystemDocumentLoop
 		}
-
-		// 一番最初にdescriptionが来る可能性がある
-		// ここでくる文字列はdescription
-		var description string
-		if t.Kind == gogqllexer.String || t.Kind == gogqllexer.BlockString {
-			description = t.Value
-			t = l.NextToken()
-			if t.Kind == gogqllexer.EOF {
-				break
-			}
-		}
-
 		if t.Kind != gogqllexer.Name {
 			return nil, fmt.Errorf("unexpected token %+v", t)
 		}
 
 		switch t.Value {
 		case "type":
-			typeObjectDefinition, err := parseTypeObjectDefinition(l)
+			typeObjectDefinition, err := parser.ParseTypeObjectDefinition(l)
 			if err != nil {
 				return nil, err
 			}
 			d.TypeDefinitions[typeObjectDefinition.Name] = typeObjectDefinition
 		case "interface":
-			typeInterfaceDefinition, err := parseTypeInterfaceDefinition(l)
+			typeInterfaceDefinition, err := parser.ParseTypeInterfaceDefinition(l)
 			if err != nil {
 				return nil, err
 			}
@@ -376,7 +95,7 @@ ParseSystemDocumentLoop:
 			var err error
 			var inputValueDefinitions []ast.InputValueDefinition
 			if t.Kind == gogqllexer.ParenL {
-				inputValueDefinitions, err = parseArgumentsDefinition(l)
+				inputValueDefinitions, err = parser.ParseArgumentsDefinition(l)
 				if err != nil {
 					return nil, err
 				}
@@ -404,7 +123,7 @@ ParseSystemDocumentLoop:
 				return nil, fmt.Errorf("unexpected token %+v", t)
 			}
 			dLocations := make([]ast.DirectiveLocation, 0)
-			dl := parsDirectiveLocation(t.Value)
+			dl := parser.ParsDirectiveLocation(t.Value)
 			if dl == ast.DirectiveLocationUnknown {
 				return nil, fmt.Errorf("unexpected token %+v", t)
 			}
@@ -422,7 +141,7 @@ ParseSystemDocumentLoop:
 				if t.Kind != gogqllexer.Name {
 					return nil, fmt.Errorf("unexpected token %+v", t)
 				}
-				dl := parsDirectiveLocation(t.Value)
+				dl := parser.ParsDirectiveLocation(t.Value)
 				if dl == ast.DirectiveLocationUnknown {
 					return nil, fmt.Errorf("unexpected token %+v", t)
 				}
@@ -517,218 +236,4 @@ ParseSystemDocumentLoop:
 	}
 
 	return d, nil
-}
-
-func parsDirectiveLocation(v string) ast.DirectiveLocation {
-	switch v {
-	case "QUERY":
-		return ast.DirectiveLocationQuery
-	case "MUTATION":
-		return ast.DirectiveLocationMutation
-	case "SUBSCRIPTION":
-		return ast.DirectiveLocationSubscription
-	case "FIELD":
-		return ast.DirectiveLocationField
-	case "FRAGMENT_DEFINITION":
-		return ast.DirectiveLocationFragmentDefinition
-	case "FRAGMENT_SPREAD":
-		return ast.DirectiveLocationFragmentSpread
-	case "INLINE_FRAGMENT":
-		return ast.DirectiveLocationInlineFragment
-	case "VARIABLE_DEFINITION":
-		return ast.DirectiveLocationVariableDefinition
-
-	case "SCHEMA":
-		return ast.DirectiveLocationSchema
-	case "SCALAR":
-		return ast.DirectiveLocationScalar
-	case "OBJECT":
-		return ast.DirectiveLocationObject
-	case "FIELD_DEFINITION":
-		return ast.DirectiveLocationFieldDefinition
-	case "ARGUMENT_DEFINITION":
-		return ast.DirectiveLocationArgumentDefinition
-	case "INTERFACE":
-		return ast.DirectiveLocationInterface
-	case "UNION":
-		return ast.DirectiveLocationUnion
-	case "ENUM":
-		return ast.DirectiveLocationEnum
-	case "ENUM_VALUE":
-		return ast.DirectiveLocationEnumValue
-	case "INPUT_OBJECT":
-		return ast.DirectiveLocationInputObject
-	case "INPUT_FIELD_DEFINITION":
-		return ast.DirectiveLocationInputFieldDefinition
-	default:
-		return ast.DirectiveLocationUnknown
-	}
-}
-
-func parseInputValueDefinition(l *lexerWrapper, description string) (def ast.InputValueDefinition, err error) {
-	var t gogqllexer.Token
-
-	t = l.NextToken()
-	if t.Kind != gogqllexer.Name {
-		return def, fmt.Errorf("unexpected token %+v", t)
-	}
-	def.Name = t.Value
-
-	if t = l.NextToken(); t.Kind != gogqllexer.Colon {
-		return def, fmt.Errorf("unexpected token %+v", t)
-	}
-
-	argType, err := parseType(l)
-	if err != nil {
-		return def, err
-	}
-	def.Type = argType
-
-	t = l.PeekToken()
-	if t.Kind == gogqllexer.Equal {
-		l.NextToken()
-		t = l.NextToken()
-		switch t.Kind {
-		case gogqllexer.Int, gogqllexer.Float, gogqllexer.String, gogqllexer.BlockString, gogqllexer.Name:
-			def.RawDefaultValue = t.Value
-		default:
-		}
-	}
-
-	directives := make([]ast.Directive, 0)
-	for {
-		t = l.PeekToken()
-		if t.Kind != gogqllexer.At {
-			break
-		}
-		d, err := parseDirective(l)
-		if err != nil {
-			return def, err
-		}
-		directives = append(directives, d)
-	}
-	if len(directives) > 0 {
-		def.Directives = directives
-	}
-	def.Description = description
-
-	return def, nil
-}
-
-func parseDirective(l *lexerWrapper) (d ast.Directive, err error) {
-	t := l.NextToken()
-	if t.Kind != gogqllexer.At {
-		return d, fmt.Errorf("unexpected token %+v", t)
-	}
-
-	t = l.NextToken()
-	if t.Kind != gogqllexer.Name {
-		return d, fmt.Errorf("unexpected token %+v", t)
-	}
-	d.Name = t.Value
-
-	args := make([]ast.Argument, 0)
-	t = l.PeekToken()
-	if t.Kind == gogqllexer.ParenL {
-		arg := ast.Argument{}
-		l.NextToken()
-		t = l.NextToken()
-		if t.Kind != gogqllexer.Name {
-			return d, fmt.Errorf("unexpected token %+v", t)
-		}
-		arg.Name = t.Value
-
-		t = l.NextToken()
-		if t.Kind != gogqllexer.Colon {
-			return d, fmt.Errorf("unexpected token %+v", t)
-		}
-
-		t = l.NextToken()
-		switch t.Kind {
-		default:
-			return d, fmt.Errorf("unexpected token %+v", t)
-		case gogqllexer.Int, gogqllexer.Float, gogqllexer.Name, gogqllexer.String, gogqllexer.BlockString:
-			arg.Value = t.Value
-		}
-
-		t = l.NextToken()
-		if t.Kind != gogqllexer.ParenR {
-			return d, fmt.Errorf("unexpected token %+v", t)
-		}
-
-		args = append(args, arg)
-		d.Arguments = args
-	}
-
-	return d, err
-}
-
-func parseArgumentsDefinition(l *lexerWrapper) (defs []ast.InputValueDefinition, err error) {
-	t := l.NextToken()
-	if t.Kind != gogqllexer.ParenL {
-		return defs, err
-	}
-
-	for {
-		inputValDescription := ""
-
-		t = l.PeekToken()
-		switch t.Kind {
-		case gogqllexer.String, gogqllexer.BlockString:
-			inputValDescription = t.Value
-			l.NextToken()
-		case gogqllexer.Name:
-			ivd, err := parseInputValueDefinition(l, inputValDescription)
-			if err != nil {
-				return defs, err
-			}
-			defs = append(defs, ivd)
-		case gogqllexer.ParenR:
-			if len(defs) == 0 {
-				return defs, fmt.Errorf("unexpected token %+v", t)
-			}
-			l.NextToken()
-			return defs, nil
-		default:
-			return defs, fmt.Errorf("unexpected token %+v", t)
-		}
-	}
-}
-
-func parseType(l *lexerWrapper) (t ast.Type, err error) {
-	var token gogqllexer.Token
-
-	token = l.NextToken()
-	switch token.Kind {
-	case gogqllexer.Name:
-		t.NamedType = token.Value
-		token = l.PeekToken()
-		if token.Kind == gogqllexer.Bang {
-			t.NotNull = true
-			l.NextToken()
-		}
-	case gogqllexer.BracketL:
-		t.ListType = &ast.Type{}
-
-		elmType, err := parseType(l)
-		if err != nil {
-			return t, err
-		}
-		t.ListType = &elmType
-
-		token = l.NextToken()
-		if token.Kind != gogqllexer.BracketR {
-			return t, fmt.Errorf("unexpected token %+v", token)
-		}
-
-		token = l.PeekToken()
-		if token.Kind == gogqllexer.Bang {
-			t.NotNull = true
-			l.NextToken()
-		}
-	default:
-		return t, fmt.Errorf("unexpected token %+v", token)
-	}
-
-	return t, nil
 }
