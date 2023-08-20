@@ -96,6 +96,8 @@ func (d *EnumTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
 type InputObjectTypeDefinition struct {
 	Description string
 	Name        string
+	Directives  []Directive
+	InputFields []InputValueDefinition
 }
 
 func (d *InputObjectTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {

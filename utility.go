@@ -30,14 +30,6 @@ func (l *lexerWrapper) PeekToken() gogqllexer.Token {
 	return *l.keepToken
 }
 
-func (l *lexerWrapper) PeekAndMayBe(kinds []gogqllexer.Kind, callback func(t gogqllexer.Token, advanceLexer func()) error) error {
-	t := l.PeekToken()
-	if slices.Contains(kinds, t.Kind) {
-		return callback(t, func() { l.NextToken() })
-	}
-	return nil
-}
-
 func (l *lexerWrapper) PeekAndMustBe(kinds []gogqllexer.Kind, callback func(t gogqllexer.Token, advanceLexer func()) error) error {
 	t := l.PeekToken()
 	if slices.Contains(kinds, t.Kind) {

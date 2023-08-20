@@ -52,56 +52,6 @@ func ParsDirectiveLocation(v string) ast.DirectiveLocation {
 	}
 }
 
-func parseInputValueDefinition(l *LexerWrapper, description string) (def ast.InputValueDefinition, err error) {
-	var t gogqllexer.Token
-
-	t = l.NextToken()
-	if t.Kind != gogqllexer.Name {
-		return def, fmt.Errorf("unexpected token %+v", t)
-	}
-	def.Name = t.Value
-
-	if t = l.NextToken(); t.Kind != gogqllexer.Colon {
-		return def, fmt.Errorf("unexpected token %+v", t)
-	}
-
-	argType, err := parseType(l)
-	if err != nil {
-		return def, err
-	}
-	def.Type = argType
-
-	t = l.PeekToken()
-	if t.Kind == gogqllexer.Equal {
-		l.NextToken()
-		t = l.NextToken()
-		switch t.Kind {
-		case gogqllexer.Int, gogqllexer.Float, gogqllexer.String, gogqllexer.BlockString, gogqllexer.Name:
-			def.RawDefaultValue = t.Value
-		default:
-		}
-	}
-
-	directives := make([]ast.Directive, 0)
-	for {
-		t = l.PeekToken()
-		if t.Kind != gogqllexer.At {
-			break
-		}
-		d, err := parseDirective(l)
-		if err != nil {
-			return def, err
-		}
-		directives = append(directives, d)
-	}
-	if len(directives) > 0 {
-		def.Directives = directives
-	}
-	def.Description = description
-
-	return def, nil
-}
-
 func ParseArgumentsDefinition(l *LexerWrapper) (defs []ast.InputValueDefinition, err error) {
 	t := l.NextToken()
 	if t.Kind != gogqllexer.ParenL {
