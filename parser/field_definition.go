@@ -32,17 +32,7 @@ func parseFieldsDefinition(l *LexerWrapper) (d []*ast.FieldDefinition, err error
 func parseFieldDefinition(l *LexerWrapper) (d *ast.FieldDefinition, err error) {
 	d = &ast.FieldDefinition{}
 
-	if err = l.PeekAndMayBe(
-		[]gogqllexer.Kind{gogqllexer.String, gogqllexer.BlockString},
-		func(t gogqllexer.Token, advanceLexer func()) error {
-			defer advanceLexer()
-
-			d.Description = t.Value
-			return nil
-		},
-	); err != nil {
-		return nil, err
-	}
+	d.Description, _ = l.ReadDescription()
 
 	if d.Name, err = l.ReadNameValue(); err != nil {
 		return nil, err

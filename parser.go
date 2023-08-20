@@ -42,18 +42,7 @@ func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtens
 
 ParseSystemDocumentLoop:
 	for {
-		var description string
-		if err := l.PeekAndMayBe(
-			[]gogqllexer.Kind{gogqllexer.String, gogqllexer.BlockString},
-			func(t gogqllexer.Token, advanceLexer func()) error {
-				defer advanceLexer()
-
-				description = t.Value
-				return nil
-			},
-		); err != nil {
-			return nil, err
-		}
+		description, _ := l.ReadDescription()
 
 		t := l.PeekToken()
 		if t.Kind == gogqllexer.EOF {
@@ -88,6 +77,12 @@ ParseSystemDocumentLoop:
 				return nil, err
 			}
 			d.TypeDefinitions[typeEnumDefinition.Name] = typeEnumDefinition
+		case "input":
+			typeInputDefinition, err := parser.ParseInputObjectTypeDefinition(l, description)
+			if err != nil {
+				return nil, err
+			}
+			d.TypeDefinitions[typeInputDefinition.Name] = typeInputDefinition
 		case "directive":
 			l.NextToken()
 			t = l.NextToken()
