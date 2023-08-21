@@ -62,6 +62,16 @@ func (l *LexerWrapper) SkipIf(kind gogqllexer.Kind) (skip bool) {
 	return t.Kind == kind
 }
 
+func (l *LexerWrapper) SkipKeywordIf(keyword string) (skip bool) {
+	defer func() {
+		if skip {
+			l.NextToken()
+		}
+	}()
+	t := l.PeekToken()
+	return t.Kind == gogqllexer.Name && t.Value == keyword
+}
+
 func (l *LexerWrapper) CheckKind(kind gogqllexer.Kind) bool {
 	return l.PeekToken().Kind == kind
 }

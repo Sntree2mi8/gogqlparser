@@ -40,13 +40,12 @@ func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtens
 	}
 	l := parser.NewLexerWrapper(gogqllexer.New(strings.NewReader(src.Body)))
 
-ParseSystemDocumentLoop:
 	for {
 		description, _ := l.ReadDescription()
 
 		t := l.PeekToken()
 		if t.Kind == gogqllexer.EOF {
-			break ParseSystemDocumentLoop
+			break
 		}
 		if t.Kind != gogqllexer.Name {
 			return nil, fmt.Errorf("unexpected token %+v", t)
@@ -84,90 +83,16 @@ ParseSystemDocumentLoop:
 			}
 			d.TypeDefinitions[typeInputDefinition.Name] = typeInputDefinition
 		case "directive":
-			l.NextToken()
-			t = l.NextToken()
-			if t.Kind != gogqllexer.At {
-				return nil, fmt.Errorf("unexpected token %+v", t)
+			directiveDefinition, err := parser.ParseDirectiveDefinition(l, description)
+			if err != nil {
+				return nil, err
 			}
-			t = l.NextToken()
-			if t.Kind != gogqllexer.Name {
-				return nil, fmt.Errorf("unexpected token %+v", t)
-			}
-
-			directiveName := t.Value
-			isRepeatable := false
-
-			t = l.PeekToken()
-			var err error
-			var inputValueDefinitions []ast.InputValueDefinition
-			if t.Kind == gogqllexer.ParenL {
-				inputValueDefinitions, err = parser.ParseArgumentsDefinition(l)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			t = l.PeekToken()
-			if t.Kind != gogqllexer.Name {
-				return nil, fmt.Errorf("unexpected token %+v", t)
-			}
-
-			if t.Value == "repeatable" {
-				isRepeatable = true
-				l.NextToken()
-			}
-
-			t = l.NextToken()
-			if t.Kind != gogqllexer.Name {
-				return nil, fmt.Errorf("unexpected token %+v", t)
-			} else if t.Value != "on" {
-				return nil, fmt.Errorf("unexpected token %+v", t)
-			}
-
-			t = l.NextToken()
-			if t.Kind != gogqllexer.Name {
-				return nil, fmt.Errorf("unexpected token %+v", t)
-			}
-			dLocations := make([]ast.DirectiveLocation, 0)
-			dl := parser.ParsDirectiveLocation(t.Value)
-			if dl == ast.DirectiveLocationUnknown {
-				return nil, fmt.Errorf("unexpected token %+v", t)
-			}
-			dLocations = append(dLocations, dl)
-
-			for {
-				t = l.PeekToken()
-				if t.Kind != gogqllexer.Pipe {
-					break
-				} else {
-					l.NextToken()
-				}
-
-				t = l.NextToken()
-				if t.Kind != gogqllexer.Name {
-					return nil, fmt.Errorf("unexpected token %+v", t)
-				}
-				dl := parser.ParsDirectiveLocation(t.Value)
-				if dl == ast.DirectiveLocationUnknown {
-					return nil, fmt.Errorf("unexpected token %+v", t)
-				}
-				dLocations = append(dLocations, dl)
-			}
-
-			d.DirectiveDefinitions = append(d.DirectiveDefinitions, ast.DirectiveDefinition{
-				Description:         description,
-				Name:                directiveName,
-				ArgumentsDefinition: inputValueDefinitions,
-				IsRepeatable:        isRepeatable,
-				DirectiveLocations:  dLocations,
-			})
-
+			d.DirectiveDefinitions = append(d.DirectiveDefinitions, *directiveDefinition)
 		case "schema":
 			schemaDef, err := parser.ParseSchemaDefinition(l, description)
 			if err != nil {
 				return nil, err
 			}
-
 			d.SchemaDefinitions = append(d.SchemaDefinitions, *schemaDef)
 		default:
 			return nil, fmt.Errorf("unexpected token %+v", t.Value)

@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"github.com/Sntree2mi8/gogqllexer"
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
@@ -75,4 +76,114 @@ func parseDirective(l *LexerWrapper) (d ast.Directive, err error) {
 	}
 
 	return d, err
+}
+
+func ParsDirectiveLocation(v string) ast.DirectiveLocation {
+	switch v {
+	case "QUERY":
+		return ast.DirectiveLocationQuery
+	case "MUTATION":
+		return ast.DirectiveLocationMutation
+	case "SUBSCRIPTION":
+		return ast.DirectiveLocationSubscription
+	case "FIELD":
+		return ast.DirectiveLocationField
+	case "FRAGMENT_DEFINITION":
+		return ast.DirectiveLocationFragmentDefinition
+	case "FRAGMENT_SPREAD":
+		return ast.DirectiveLocationFragmentSpread
+	case "INLINE_FRAGMENT":
+		return ast.DirectiveLocationInlineFragment
+	case "VARIABLE_DEFINITION":
+		return ast.DirectiveLocationVariableDefinition
+
+	case "SCHEMA":
+		return ast.DirectiveLocationSchema
+	case "SCALAR":
+		return ast.DirectiveLocationScalar
+	case "OBJECT":
+		return ast.DirectiveLocationObject
+	case "FIELD_DEFINITION":
+		return ast.DirectiveLocationFieldDefinition
+	case "ARGUMENT_DEFINITION":
+		return ast.DirectiveLocationArgumentDefinition
+	case "INTERFACE":
+		return ast.DirectiveLocationInterface
+	case "UNION":
+		return ast.DirectiveLocationUnion
+	case "ENUM":
+		return ast.DirectiveLocationEnum
+	case "ENUM_VALUE":
+		return ast.DirectiveLocationEnumValue
+	case "INPUT_OBJECT":
+		return ast.DirectiveLocationInputObject
+	case "INPUT_FIELD_DEFINITION":
+		return ast.DirectiveLocationInputFieldDefinition
+	default:
+		return ast.DirectiveLocationUnknown
+	}
+}
+
+func parseDirectiveLocations(l *LexerWrapper) (locs []ast.DirectiveLocation, err error) {
+	l.SkipIf(gogqllexer.Pipe)
+
+	for {
+		var locationValue string
+		if locationValue, err = l.ReadNameValue(); err != nil {
+			return nil, err
+		}
+		loc := ParsDirectiveLocation(locationValue)
+		if loc == ast.DirectiveLocationUnknown {
+			return nil, fmt.Errorf("unexpected token %+v", locationValue)
+		}
+
+		locs = append(locs, loc)
+
+		if l.SkipIf(gogqllexer.Pipe) {
+			continue
+		}
+		break
+	}
+
+	return locs, nil
+}
+
+// ParseDirectiveDefinition parses a directive definition
+//
+// Reference: https://spec.graphql.org/October2021/#sec-Type-System.Directives
+func ParseDirectiveDefinition(l *LexerWrapper, description string) (def *ast.DirectiveDefinition, err error) {
+	def = &ast.DirectiveDefinition{
+		Description: description,
+	}
+
+	if err = l.SkipKeyword("directive"); err != nil {
+		return nil, err
+	}
+	if err = l.Skip(gogqllexer.At); err != nil {
+		return nil, err
+	}
+	if def.Name, err = l.ReadNameValue(); err != nil {
+		return nil, err
+	}
+
+	if l.CheckKind(gogqllexer.ParenL) {
+		if def.ArgumentsDefinition, err = ParseArgumentsDefinition(l); err != nil {
+			return nil, err
+		}
+	}
+
+	if l.SkipKeywordIf("repeatable") {
+		def.IsRepeatable = true
+	}
+
+	if err = l.SkipKeyword("on"); err != nil {
+		return nil, err
+	}
+
+	def.DirectiveLocations, err = parseDirectiveLocations(l)
+	if err != nil {
+		return nil, err
+	}
+
+	return def, nil
 }
