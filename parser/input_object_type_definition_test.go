@@ -138,3 +138,108 @@ input User {
 		})
 	}
 }
+
+func TestParseInputObjectTypeExtension(t *testing.T) {
+	type args struct {
+		l *LexerWrapper
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantDef *ast.InputObjectTypeExtension
+		wantErr bool
+	}{
+		{
+			name: "simple input object extension",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+input Restaurant {
+	name: String!
+}
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.InputObjectTypeExtension{
+				Name: "Restaurant",
+				InputsFieldDefinition: []ast.InputValueDefinition{
+					{
+						Name: "name",
+						Type: ast.Type{
+							NamedType: "String",
+							NotNull:   true,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "only directive",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+input Restaurant @input_directive
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.InputObjectTypeExtension{
+				Name: "Restaurant",
+				Directives: []ast.Directive{
+					{
+						Name: "input_directive",
+					},
+				},
+			},
+		},
+		{
+			name: "directive and field",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+extend input Restaurant @input_directive {
+    name: String!
+}
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.InputObjectTypeExtension{
+				Name: "Restaurant",
+				Directives: []ast.Directive{
+					{
+						Name: "input_directive",
+					},
+				},
+				InputsFieldDefinition: []ast.InputValueDefinition{
+					{
+						Name: "name",
+						Type: ast.Type{
+							NamedType: "String",
+							NotNull:   true,
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDef, err := ParseInputObjectTypeExtension(tt.args.l)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseInputObjectTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotDef, tt.wantDef) {
+				t.Errorf("ParseInputObjectTypeExtension() gotDef = %v, want %v", gotDef, tt.wantDef)
+			}
+		})
+	}
+}

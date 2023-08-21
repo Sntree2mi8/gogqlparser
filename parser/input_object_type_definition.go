@@ -92,3 +92,11 @@ func ParseInputObjectTypeDefinition(l *LexerWrapper, description string) (def *a
 
 	return def, nil
 }
+
+// ParseInputObjectTypeExtension parse input object type extension.
+// "extend" keyword must be consumed before calling this function.
+//
+// Reference: https://spec.graphql.org/October2021/#sec-Input-Object-Extensions
+func ParseInputObjectTypeExtension(l *LexerWrapper) (def *ast.InputObjectTypeExtension, err error) {
+	return def, nil
+}

@@ -68,6 +68,9 @@ func (e *EnumTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
 }
 
 type InputObjectTypeExtension struct {
+	Name                  string
+	Directives            []Directive
+	InputsFieldDefinition []InputValueDefinition
 }
 
 func (e *InputObjectTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
