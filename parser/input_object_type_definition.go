@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"fmt"
 	"github.com/Sntree2mi8/gogqllexer"
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
@@ -88,6 +89,44 @@ func ParseInputObjectTypeDefinition(l *LexerWrapper, description string) (def *a
 
 	if def.InputFields, err = parseInputFieldsDefinition(l); err != nil {
 		return nil, err
+	}
+
+	return def, nil
+}
+
+// ParseInputObjectTypeExtension parse input object type extension.
+// "extend" keyword must be consumed before calling this function.
+//
+// Reference: https://spec.graphql.org/October2021/#sec-Input-Object-Extensions
+func ParseInputObjectTypeExtension(l *LexerWrapper) (def *ast.InputObjectTypeExtension, err error) {
+	def = &ast.InputObjectTypeExtension{}
+
+	if err = l.SkipKeyword("input"); err != nil {
+		return nil, err
+	}
+
+	if def.Name, err = l.ReadNameValue(); err != nil {
+		return nil, err
+	}
+
+	var hasDirective bool
+	if l.CheckKind(gogqllexer.At) {
+		if def.Directives, err = parseDirectives(l); err != nil {
+			return nil, err
+		}
+
+		hasDirective = true
+	}
+
+	// field definition can be omitted only when there is one or more directives.
+	if l.CheckKind(gogqllexer.BraceL) {
+		if def.InputsFieldDefinition, err = parseInputFieldsDefinition(l); err != nil {
+			return nil, err
+		}
+	} else if !hasDirective {
+		// TODO: fix error message
+		// if next token is punctuator, there is no value to print.
+		return nil, fmt.Errorf("expected '{' or '@' but got %s", l.PeekToken().Value)
 	}
 
 	return def, nil
