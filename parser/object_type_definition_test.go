@@ -199,3 +199,167 @@ type User @role(role: "admin") {
 		})
 	}
 }
+
+func TestParseObjectTypeExtension(t *testing.T) {
+	type args struct {
+		l *LexerWrapper
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantDef *ast.ObjectTypeExtension
+		wantErr bool
+	}{
+		{
+			name: "simple object type extension",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(
+							`
+type Restaurant {
+    name: String!
+}
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.ObjectTypeExtension{
+				Name: "Restaurant",
+				FieldsDefinition: []*ast.FieldDefinition{
+					{
+						Name: "name",
+						Type: ast.Type{
+							NamedType: "String",
+							NotNull:   true,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "directive and field",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(
+							`
+type Restaurant @object_directive {
+    name: String!
+}
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.ObjectTypeExtension{
+				Name: "Restaurant",
+				Directives: []ast.Directive{
+					{
+						Name: "object_directive",
+					},
+				},
+				FieldsDefinition: []*ast.FieldDefinition{
+					{
+						Name: "name",
+						Type: ast.Type{
+							NamedType: "String",
+							NotNull:   true,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "implement and directive and field",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(
+							`
+type Restaurant implements Store @object_directive {
+    name: String!
+}
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.ObjectTypeExtension{
+				Name: "Restaurant",
+				ImplementInterfaces: []string{
+					"Store",
+				},
+				Directives: []ast.Directive{
+					{
+						Name: "object_directive",
+					},
+				},
+				FieldsDefinition: []*ast.FieldDefinition{
+					{
+						Name: "name",
+						Type: ast.Type{
+							NamedType: "String",
+							NotNull:   true,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "only directive",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(
+							`
+type Restaurant @object_directive
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.ObjectTypeExtension{
+				Name: "Restaurant",
+				Directives: []ast.Directive{
+					{
+						Name: "object_directive",
+					},
+				},
+			},
+		},
+		{
+			name: "only implement",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(
+							`
+type Restaurant implements Store
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.ObjectTypeExtension{
+				Name: "Restaurant",
+				ImplementInterfaces: []string{
+					"Store",
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDef, err := ParseObjectTypeExtension(tt.args.l)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseObjectTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotDef, tt.wantDef) {
+				t.Errorf("ParseObjectTypeExtension() gotDef = %v, want %v", gotDef, tt.wantDef)
+			}
+		})
+	}
+}

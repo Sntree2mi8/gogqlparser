@@ -30,6 +30,10 @@ func (e *ScalarTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind 
 }
 
 type ObjectTypeExtension struct {
+	Name                string
+	Directives          []Directive
+	FieldsDefinition    []*FieldDefinition
+	ImplementInterfaces []string
 }
 
 func (e *ObjectTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
