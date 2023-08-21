@@ -6,52 +6,6 @@ import (
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
 
-func ParsDirectiveLocation(v string) ast.DirectiveLocation {
-	switch v {
-	case "QUERY":
-		return ast.DirectiveLocationQuery
-	case "MUTATION":
-		return ast.DirectiveLocationMutation
-	case "SUBSCRIPTION":
-		return ast.DirectiveLocationSubscription
-	case "FIELD":
-		return ast.DirectiveLocationField
-	case "FRAGMENT_DEFINITION":
-		return ast.DirectiveLocationFragmentDefinition
-	case "FRAGMENT_SPREAD":
-		return ast.DirectiveLocationFragmentSpread
-	case "INLINE_FRAGMENT":
-		return ast.DirectiveLocationInlineFragment
-	case "VARIABLE_DEFINITION":
-		return ast.DirectiveLocationVariableDefinition
-
-	case "SCHEMA":
-		return ast.DirectiveLocationSchema
-	case "SCALAR":
-		return ast.DirectiveLocationScalar
-	case "OBJECT":
-		return ast.DirectiveLocationObject
-	case "FIELD_DEFINITION":
-		return ast.DirectiveLocationFieldDefinition
-	case "ARGUMENT_DEFINITION":
-		return ast.DirectiveLocationArgumentDefinition
-	case "INTERFACE":
-		return ast.DirectiveLocationInterface
-	case "UNION":
-		return ast.DirectiveLocationUnion
-	case "ENUM":
-		return ast.DirectiveLocationEnum
-	case "ENUM_VALUE":
-		return ast.DirectiveLocationEnumValue
-	case "INPUT_OBJECT":
-		return ast.DirectiveLocationInputObject
-	case "INPUT_FIELD_DEFINITION":
-		return ast.DirectiveLocationInputFieldDefinition
-	default:
-		return ast.DirectiveLocationUnknown
-	}
-}
-
 func ParseArgumentsDefinition(l *LexerWrapper) (defs []ast.InputValueDefinition, err error) {
 	t := l.NextToken()
 	if t.Kind != gogqllexer.ParenL {
