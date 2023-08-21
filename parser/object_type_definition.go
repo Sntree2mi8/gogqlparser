@@ -45,3 +45,11 @@ func ParseObjectTypeDefinition(l *LexerWrapper, description string) (d *ast.Obje
 
 	return d, nil
 }
+
+// ParseObjectTypeExtension parse object type extension.
+// "extend" keyword must be consumed before calling this function.
+//
+// Reference: https://spec.graphql.org/October2021/#sec-Object-Extensions
+func ParseObjectTypeExtension(l *LexerWrapper) (def *ast.ObjectTypeExtension, err error) {
+	return def, nil
+}
