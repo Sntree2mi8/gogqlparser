@@ -75,3 +75,10 @@ type InputObjectTypeExtension struct {
 func (e *InputObjectTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
 	return TypeSystemExtensionKindInputObject
 }
+
+type SchemaExtension struct {
+	Directives   []Directive
+	Query        *RootOperationTypeDefinition
+	Mutation     *RootOperationTypeDefinition
+	Subscription *RootOperationTypeDefinition
+}

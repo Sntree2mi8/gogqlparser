@@ -41,8 +41,7 @@ func TestParser_parseTypeSystemDocument_ParseSchemaDefinition(t *testing.T) {
 						Description: `"""
 A simple GraphQL schema which is well described.
 """`,
-						Directives: []ast.Directive{},
-						Query:      &ast.RootOperationTypeDefinition{Type: "Query"},
+						Query: &ast.RootOperationTypeDefinition{Type: "Query"},
 					},
 				},
 				TypeDefinitions:      map[string]ast.TypeDefinition{},
@@ -364,7 +363,6 @@ interface Operator {
 			want: &ast.TypeSystemExtensionDocument{
 				SchemaDefinitions: []ast.SchemaDefinition{
 					{
-						Directives:   []ast.Directive{},
 						Query:        &ast.RootOperationTypeDefinition{Type: "Query"},
 						Mutation:     &ast.RootOperationTypeDefinition{Type: "Mutation"},
 						Subscription: &ast.RootOperationTypeDefinition{Type: "Subscription"},

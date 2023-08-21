@@ -163,79 +163,12 @@ ParseSystemDocumentLoop:
 			})
 
 		case "schema":
-			if err := l.SkipKeyword("schema"); err != nil {
-				return nil, err
-			}
-			// TODO: schemaだった場合にこれからのトークンになくてはならない並び順がある
-			// TODO: directiveを一旦飛ばしているのであとで実装する
-			if err := l.Skip(gogqllexer.BraceL); err != nil {
+			schemaDef, err := parser.ParseSchemaDefinition(l, description)
+			if err != nil {
 				return nil, err
 			}
 
-			schemaDef := ast.SchemaDefinition{
-				Description: description,
-				Directives:  []ast.Directive{},
-			}
-
-		ParseRootOperationLoop:
-			for {
-				t = l.NextToken()
-				switch t.Kind {
-				case gogqllexer.BraceR:
-					break ParseRootOperationLoop
-				case gogqllexer.Name:
-					switch t.Value {
-					case "query":
-						if err := l.Skip(gogqllexer.Colon); err != nil {
-							return nil, err
-						}
-						if err := l.PeekAndMustBe(
-							[]gogqllexer.Kind{gogqllexer.Name},
-							func(t gogqllexer.Token, advanceLexer func()) error {
-								defer advanceLexer()
-								schemaDef.Query = &ast.RootOperationTypeDefinition{Type: t.Value}
-								return nil
-							},
-						); err != nil {
-							return nil, err
-						}
-					case "mutation":
-						if err := l.Skip(gogqllexer.Colon); err != nil {
-							return nil, err
-						}
-						if err := l.PeekAndMustBe(
-							[]gogqllexer.Kind{gogqllexer.Name},
-							func(t gogqllexer.Token, advanceLexer func()) error {
-								defer advanceLexer()
-								schemaDef.Mutation = &ast.RootOperationTypeDefinition{Type: t.Value}
-								return nil
-							},
-						); err != nil {
-							return nil, err
-						}
-					case "subscription":
-						if err := l.Skip(gogqllexer.Colon); err != nil {
-							return nil, err
-						}
-						if err := l.PeekAndMustBe(
-							[]gogqllexer.Kind{gogqllexer.Name},
-							func(t gogqllexer.Token, advanceLexer func()) error {
-								defer advanceLexer()
-								schemaDef.Subscription = &ast.RootOperationTypeDefinition{Type: t.Value}
-								return nil
-							},
-						); err != nil {
-							return nil, err
-						}
-					default:
-						return nil, fmt.Errorf("unexpected token %+v", t)
-					}
-				default:
-					return nil, fmt.Errorf("unexpected token %+v", t)
-				}
-			}
-
-			d.SchemaDefinitions = append(d.SchemaDefinitions, schemaDef)
+			d.SchemaDefinitions = append(d.SchemaDefinitions, *schemaDef)
 		default:
 			return nil, fmt.Errorf("unexpected token %+v", t.Value)
 		}
