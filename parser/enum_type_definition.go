@@ -63,7 +63,7 @@ func ParseEnumTypeDefinition(l *LexerWrapper, description string) (def *ast.Enum
 
 // https://spec.graphql.org/October2021/#sec-Enum-Extensions
 // NOTION: consume "extend" keyword before call this function.
-func ParseEnumExtensionDefinition(l *LexerWrapper) (def *ast.EnumTypeExtension, err error) {
+func ParseEnumTypeExtension(l *LexerWrapper) (def *ast.EnumTypeExtension, err error) {
 	def = &ast.EnumTypeExtension{}
 
 	if err := l.SkipKeyword("enum"); err != nil {

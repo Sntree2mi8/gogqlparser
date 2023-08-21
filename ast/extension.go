@@ -25,33 +25,32 @@ var _ TypeSystemExtension = (*InputObjectTypeExtension)(nil)
 type ScalarTypeExtension struct {
 }
 
-func (s *ScalarTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
-	//TODO implement me
-	panic("implement me")
+func (e *ScalarTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
+	return TypeSystemExtensionKindScalar
 }
 
 type ObjectTypeExtension struct {
 }
 
-func (o *ObjectTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
-	//TODO implement me
-	panic("implement me")
+func (e *ObjectTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
+	return TypeSystemExtensionKindObject
 }
 
 type InterfaceTypeExtension struct {
 }
 
-func (i *InterfaceTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
-	//TODO implement me
-	panic("implement me")
+func (e *InterfaceTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
+	return TypeSystemExtensionKindInterface
 }
 
 type UnionTypeExtension struct {
+	Name        string
+	Directives  []Directive
+	MemberTypes []Type
 }
 
-func (u *UnionTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
-	//TODO implement me
-	panic("implement me")
+func (e *UnionTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
+	return TypeSystemExtensionKindUnion
 }
 
 type EnumTypeExtension struct {
@@ -61,14 +60,12 @@ type EnumTypeExtension struct {
 }
 
 func (e *EnumTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
-	//TODO implement me
-	panic("implement me")
+	return TypeSystemExtensionKindEnum
 }
 
 type InputObjectTypeExtension struct {
 }
 
-func (i *InputObjectTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
-	//TODO implement me
-	panic("implement me")
+func (e *InputObjectTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
+	return TypeSystemExtensionKindInputObject
 }

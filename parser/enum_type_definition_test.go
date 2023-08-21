@@ -225,13 +225,13 @@ enum RestaurantKind
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseEnumExtensionDefinition(tt.args.l)
+			gotDef, err := ParseEnumTypeExtension(tt.args.l)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("ParseEnumExtensionDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("ParseEnumTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(gotDef, tt.wantDef) {
-				t.Errorf("ParseEnumExtensionDefinition() gotDef = %v, want %v", gotDef, tt.wantDef)
+				t.Errorf("ParseEnumTypeExtension() gotDef = %v, want %v", gotDef, tt.wantDef)
 			}
 		})
 	}

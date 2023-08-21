@@ -86,3 +86,80 @@ union User @deprecated = SuperUser | NormalUser
 		})
 	}
 }
+
+func TestParseUnionTypeExtension(t *testing.T) {
+	type args struct {
+		l *LexerWrapper
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantDef *ast.UnionTypeExtension
+		wantErr bool
+	}{
+		{
+			name: "simple union type extension",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(strings.NewReader(`
+union Restaurant = ItalianRestaurant
+`),
+					),
+				),
+			},
+			wantDef: &ast.UnionTypeExtension{
+				Name: "Restaurant",
+				MemberTypes: []ast.Type{
+					{
+						NamedType: "ItalianRestaurant",
+					},
+				},
+			},
+		},
+		{
+			name: "only directive",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(strings.NewReader(`
+union Restaurant @union_directive
+`),
+					),
+				),
+			},
+			wantDef: &ast.UnionTypeExtension{
+				Name: "Restaurant",
+				Directives: []ast.Directive{
+					{
+						Name: "union_directive",
+					},
+				},
+			},
+		},
+		{
+			name: "extend but do nothing",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(strings.NewReader(`
+union Restaurant
+`),
+					),
+				),
+			},
+			wantDef: &ast.UnionTypeExtension{
+				Name: "Restaurant",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDef, err := ParseUnionTypeExtension(tt.args.l)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseUnionTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotDef, tt.wantDef) {
+				t.Errorf("ParseUnionTypeExtension() gotDef = %v, want %v", gotDef, tt.wantDef)
+			}
+		})
+	}
+}
