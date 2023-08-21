@@ -168,3 +168,109 @@ interface User implements Node @deprecated(reason: "this is deprecated") {
 		})
 	}
 }
+
+func TestParseInterfaceTypeExtension(t *testing.T) {
+	type args struct {
+		l *LexerWrapper
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantDef *ast.InterfaceTypeExtension
+		wantErr bool
+	}{
+		{
+			name: "simple interface type extension",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+interface RestaurantInterface {
+    address: String!
+}
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.InterfaceTypeExtension{
+				Name: "RestaurantInterface",
+				FieldsDefinition: []*ast.FieldDefinition{
+					{
+						Name: "address",
+						Type: ast.Type{
+							NamedType: "String",
+							NotNull:   true,
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "implements other interface",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+interface RestaurantInterface implements Store
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.InterfaceTypeExtension{
+				Name:                "RestaurantInterface",
+				ImplementInterfaces: []string{"Store"},
+			},
+		},
+		{
+			name: "onply directive",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+interface RestaurantInterface @interface_directive
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.InterfaceTypeExtension{
+				Name: "RestaurantInterface",
+				Directives: []ast.Directive{
+					{
+						Name: "interface_directive",
+					},
+				},
+			},
+		},
+		{
+			name: "extend but do nothing",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+interface RestaurantInterface
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.InterfaceTypeExtension{
+				Name: "RestaurantInterface",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDef, err := ParseInterfaceTypeExtension(tt.args.l)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseInterfaceTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotDef, tt.wantDef) {
+				t.Errorf("ParseInterfaceTypeExtension() gotDef = %v, want %v", gotDef, tt.wantDef)
+			}
+		})
+	}
+}
