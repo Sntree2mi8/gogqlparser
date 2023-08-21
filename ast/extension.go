@@ -15,14 +15,9 @@ type TypeSystemExtension interface {
 	TypeSystemExtensionKind() TypeSystemExtensionKind
 }
 
-var _ TypeSystemExtension = (*ScalarTypeExtension)(nil)
-var _ TypeSystemExtension = (*ObjectTypeExtension)(nil)
-var _ TypeSystemExtension = (*InterfaceTypeExtension)(nil)
-var _ TypeSystemExtension = (*UnionTypeExtension)(nil)
-var _ TypeSystemExtension = (*EnumTypeExtension)(nil)
-var _ TypeSystemExtension = (*InputObjectTypeExtension)(nil)
-
 type ScalarTypeExtension struct {
+	Name       string
+	Directives []Directive
 }
 
 func (e *ScalarTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {
