@@ -246,7 +246,7 @@ type Restaurant {
 						strings.NewReader(
 							`
 type Restaurant @object_directive {
-    name: String
+    name: String!
 }
 `,
 						),
