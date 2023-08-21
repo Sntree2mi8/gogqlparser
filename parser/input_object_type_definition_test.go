@@ -203,7 +203,7 @@ input Restaurant @input_directive
 				l: NewLexerWrapper(
 					gogqllexer.New(
 						strings.NewReader(`
-extend input Restaurant @input_directive {
+input Restaurant @input_directive {
     name: String!
 }
 `,
@@ -228,6 +228,24 @@ extend input Restaurant @input_directive {
 					},
 				},
 			},
+		},
+		{
+			name: "extend input object type needs at least one field or directive",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+input Restaurant 
+
+type OtherType {
+	name: String!
+}
+`,
+						),
+					),
+				),
+			},
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
