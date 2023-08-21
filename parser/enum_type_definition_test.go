@@ -149,7 +149,6 @@ enum UserKind {
 }
 
 // NOTION:
-// "extend" keyword is not supported in this parser
 // "extend" keyword is assumed to be consumed before this function is called
 func TestParseEnumExtensionDefinition(t *testing.T) {
 	type args struct {
@@ -184,6 +183,43 @@ enum RestaurantKind {
 						},
 					},
 				},
+			},
+		},
+		{
+			name: "only directive",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+enum RestaurantKind @enum_directive
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.EnumTypeExtension{
+				Name: "RestaurantKind",
+				Directives: []ast.Directive{
+					{
+						Name: "enum_directive",
+					},
+				},
+			},
+		},
+		{
+			name: "extend but do nothing",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+enum RestaurantKind
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.EnumTypeExtension{
+				Name: "RestaurantKind",
 			},
 		},
 	}
