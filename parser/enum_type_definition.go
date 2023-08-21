@@ -60,3 +60,8 @@ func ParseEnumTypeDefinition(l *LexerWrapper, description string) (def *ast.Enum
 
 	return def, nil
 }
+
+// https://spec.graphql.org/October2021/#sec-Enum-Extensions
+func ParseEnumExtensionDefinition(l *LexerWrapper) (def *ast.EnumTypeExtension, err error) {
+	return nil, nil
+}

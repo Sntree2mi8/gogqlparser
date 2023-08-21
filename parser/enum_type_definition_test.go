@@ -147,3 +147,53 @@ enum UserKind {
 		})
 	}
 }
+
+func TestParseEnumExtensionDefinition(t *testing.T) {
+	type args struct {
+		l *LexerWrapper
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantDef *ast.EnumTypeExtension
+		wantErr bool
+	}{
+		{
+			name: "simple enum extension",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(
+						strings.NewReader(`
+extend enum RestaurantKind {
+        CHINESE
+}
+`,
+						),
+					),
+				),
+			},
+			wantDef: &ast.EnumTypeExtension{
+				Name: "RestaurantKind",
+				EnumValue: []ast.EnumValueDefinition{
+					{
+						Value: ast.EnumValue{
+							Value: "CHINESE",
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotDef, err := ParseEnumExtensionDefinition(tt.args.l)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseEnumExtensionDefinition() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotDef, tt.wantDef) {
+				t.Errorf("ParseEnumExtensionDefinition() gotDef = %v, want %v", gotDef, tt.wantDef)
+			}
+		})
+	}
+}
