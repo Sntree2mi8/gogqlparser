@@ -45,3 +45,11 @@ func ParseInterfaceTypeDefinition(l *LexerWrapper, description string) (d *ast.I
 
 	return d, err
 }
+
+// ParseInterfaceTypeExtension parse interface type extension.
+// "extend" keyword must be consumed before calling this function.
+//
+// Reference: https://spec.graphql.org/October2021/#sec-Interface-Extensions
+func ParseInterfaceTypeExtension(l *LexerWrapper) (def *ast.InterfaceTypeExtension, err error) {
+	return nil, nil
+}
