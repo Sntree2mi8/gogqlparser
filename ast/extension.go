@@ -39,8 +39,8 @@ func (e *ObjectTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind 
 type InterfaceTypeExtension struct {
 	Name                string
 	ImplementInterfaces []string
-	Directive           []Directive
-	FieldsDefinition    []FieldDefinition
+	Directives          []Directive
+	FieldsDefinition    []*FieldDefinition
 }
 
 func (e *InterfaceTypeExtension) TypeSystemExtensionKind() TypeSystemExtensionKind {

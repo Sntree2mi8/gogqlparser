@@ -195,7 +195,7 @@ interface RestaurantInterface {
 			},
 			wantDef: &ast.InterfaceTypeExtension{
 				Name: "RestaurantInterface",
-				FieldsDefinition: []ast.FieldDefinition{
+				FieldsDefinition: []*ast.FieldDefinition{
 					{
 						Name: "address",
 						Type: ast.Type{
@@ -237,7 +237,7 @@ interface RestaurantInterface @interface_directive
 			},
 			wantDef: &ast.InterfaceTypeExtension{
 				Name: "RestaurantInterface",
-				Directive: []ast.Directive{
+				Directives: []ast.Directive{
 					{
 						Name: "interface_directive",
 					},
