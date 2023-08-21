@@ -148,6 +148,9 @@ enum UserKind {
 	}
 }
 
+// NOTION:
+// "extend" keyword is not supported in this parser
+// "extend" keyword is assumed to be consumed before this function is called
 func TestParseEnumExtensionDefinition(t *testing.T) {
 	type args struct {
 		l *LexerWrapper
@@ -164,7 +167,7 @@ func TestParseEnumExtensionDefinition(t *testing.T) {
 				l: NewLexerWrapper(
 					gogqllexer.New(
 						strings.NewReader(`
-extend enum RestaurantKind {
+enum RestaurantKind {
         CHINESE
 }
 `,
