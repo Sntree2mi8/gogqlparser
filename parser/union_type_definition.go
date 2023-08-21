@@ -65,3 +65,11 @@ func ParseUnionTypeDefinition(l *LexerWrapper, description string) (def *ast.Uni
 
 	return def, nil
 }
+
+// ParseUnionTypeExtension parses union type extension.
+// "extend" keyword must be consumed before calling this function.
+//
+// Reference: https://spec.graphql.org/October2021/#sec-Union-Extensions
+func ParseUnionTypeExtension(l *LexerWrapper) (def *ast.UnionTypeExtension, err error) {
+	return def, err
+}
