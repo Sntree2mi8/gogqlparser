@@ -72,7 +72,6 @@ func ParseSchemaDefinition(l *LexerWrapper, description string) (def *ast.Schema
 		def.Query = rootOperationTypeDefs["query"]
 		def.Mutation = rootOperationTypeDefs["mutation"]
 		def.Subscription = rootOperationTypeDefs["subscription"]
-
 	} else {
 		return nil, fmt.Errorf("schema definition must have at least one root operation type definition")
 	}
@@ -80,6 +79,36 @@ func ParseSchemaDefinition(l *LexerWrapper, description string) (def *ast.Schema
 	return def, err
 }
 
+// ParseSchemaExtension parse schema extension.
+// "extend" keyword must be consumed before calling this function.
+//
+// Reference: https://spec.graphql.org/October2021/#sec-Schema-Extension
 func ParseSchemaExtension(l *LexerWrapper) (def *ast.SchemaExtension, err error) {
+	def = &ast.SchemaExtension{}
+
+	if err = l.SkipKeyword("schema"); err != nil {
+		return nil, err
+	}
+	var canOmitRootOperationTypes bool
+	if l.CheckKind(gogqllexer.At) {
+		if def.Directives, err = parseDirectives(l); err != nil {
+			return nil, err
+		}
+
+		canOmitRootOperationTypes = true
+	}
+
+	if l.CheckKind(gogqllexer.BraceL) {
+		rootOperationTypeDefs, err := ParseRootOperationTypeDefinitions(l)
+		if err != nil {
+			return nil, err
+		}
+		def.Query = rootOperationTypeDefs["query"]
+		def.Mutation = rootOperationTypeDefs["mutation"]
+		def.Subscription = rootOperationTypeDefs["subscription"]
+	} else if !canOmitRootOperationTypes {
+		return nil, fmt.Errorf("schema extension must have at least one root operation type definition or directive")
+	}
+
 	return def, err
 }
