@@ -116,6 +116,39 @@ union Restaurant = ItalianRestaurant
 				},
 			},
 		},
+		{
+			name: "only directive",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(strings.NewReader(`
+union Restaurant @union_directive
+`),
+					),
+				),
+			},
+			wantDef: &ast.UnionTypeExtension{
+				Name: "Restaurant",
+				Directives: []ast.Directive{
+					{
+						Name: "union_directive",
+					},
+				},
+			},
+		},
+		{
+			name: "extend but do nothing",
+			args: args{
+				l: NewLexerWrapper(
+					gogqllexer.New(strings.NewReader(`
+union Restaurant
+`),
+					),
+				),
+			},
+			wantDef: &ast.UnionTypeExtension{
+				Name: "Restaurant",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
