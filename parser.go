@@ -35,7 +35,7 @@ func MergeTypeSystemDocument(documents []*ast.TypeSystemExtensionDocument) *ast.
 func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtensionDocument, error) {
 	d := &ast.TypeSystemExtensionDocument{
 		SchemaDefinitions:    []ast.SchemaDefinition{},
-		TypeDefinitions:      map[string]ast.TypeDefinition{},
+		TypeDefinitions:      []ast.TypeDefinition{},
 		DirectiveDefinitions: []ast.DirectiveDefinition{},
 	}
 	l := parser.NewLexerWrapper(gogqllexer.New(strings.NewReader(src.Body)))
@@ -53,35 +53,35 @@ func (p *Parser) parseTypeSystemDocument(src *ast.Source) (*ast.TypeSystemExtens
 
 		switch t.Value {
 		case "type":
-			typeObjectDefinition, err := parser.ParseObjectTypeDefinition(l, description)
+			def, err := parser.ParseObjectTypeDefinition(l, description)
 			if err != nil {
 				return nil, err
 			}
-			d.TypeDefinitions[typeObjectDefinition.Name] = typeObjectDefinition
+			d.TypeDefinitions = append(d.TypeDefinitions, def)
 		case "interface":
-			typeInterfaceDefinition, err := parser.ParseInterfaceTypeDefinition(l, description)
+			def, err := parser.ParseInterfaceTypeDefinition(l, description)
 			if err != nil {
 				return nil, err
 			}
-			d.TypeDefinitions[typeInterfaceDefinition.Name] = typeInterfaceDefinition
+			d.TypeDefinitions = append(d.TypeDefinitions, def)
 		case "union":
-			typeUnionDefinition, err := parser.ParseUnionTypeDefinition(l, description)
+			def, err := parser.ParseUnionTypeDefinition(l, description)
 			if err != nil {
 				return nil, err
 			}
-			d.TypeDefinitions[typeUnionDefinition.Name] = typeUnionDefinition
+			d.TypeDefinitions = append(d.TypeDefinitions, def)
 		case "enum":
-			typeEnumDefinition, err := parser.ParseEnumTypeDefinition(l, description)
+			def, err := parser.ParseEnumTypeDefinition(l, description)
 			if err != nil {
 				return nil, err
 			}
-			d.TypeDefinitions[typeEnumDefinition.Name] = typeEnumDefinition
+			d.TypeDefinitions = append(d.TypeDefinitions, def)
 		case "input":
-			typeInputDefinition, err := parser.ParseInputObjectTypeDefinition(l, description)
+			def, err := parser.ParseInputObjectTypeDefinition(l, description)
 			if err != nil {
 				return nil, err
 			}
-			d.TypeDefinitions[typeInputDefinition.Name] = typeInputDefinition
+			d.TypeDefinitions = append(d.TypeDefinitions, def)
 		case "directive":
 			directiveDefinition, err := parser.ParseDirectiveDefinition(l, description)
 			if err != nil {

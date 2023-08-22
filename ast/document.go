@@ -2,7 +2,7 @@ package ast
 
 type TypeSystemExtensionDocument struct {
 	SchemaDefinitions    []SchemaDefinition
-	TypeDefinitions      map[string]TypeDefinition
+	TypeDefinitions      []TypeDefinition
 	DirectiveDefinitions []DirectiveDefinition
 }
 
