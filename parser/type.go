@@ -5,24 +5,24 @@ import (
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
 
-func parseType(l *LexerWrapper) (t ast.Type, err error) {
-	if l.SkipIf(gogqllexer.BracketL) {
-		listType, err := parseType(l)
+func (p *parser) parseType() (t ast.Type, err error) {
+	if p.SkipIf(gogqllexer.BracketL) {
+		listType, err := p.parseType()
 		if err != nil {
 			return t, err
 		}
 
 		t.ListType = &listType
-		if err = l.Skip(gogqllexer.BracketR); err != nil {
+		if err = p.Skip(gogqllexer.BracketR); err != nil {
 			return t, err
 		}
 	} else {
-		if t.NamedType, err = l.ReadNameValue(); err != nil {
+		if t.NamedType, err = p.ReadNameValue(); err != nil {
 			return t, err
 		}
 	}
 
-	if l.SkipIf(gogqllexer.Bang) {
+	if p.SkipIf(gogqllexer.Bang) {
 		t.NotNull = true
 	}
 

@@ -10,24 +10,21 @@ import (
 
 func TestParseUnionTypeDefinition(t *testing.T) {
 	type args struct {
-		l           *LexerWrapper
 		description string
 	}
 	tests := []struct {
 		name    string
+		schema  string
 		args    args
 		wantDef *ast.UnionTypeDefinition
 		wantErr bool
 	}{
 		{
 			name: "simple union",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(strings.NewReader(`
+			schema: `
 union User = SuperUser | NormalUser
-`),
-					),
-				),
+`,
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.UnionTypeDefinition{
@@ -45,13 +42,10 @@ union User = SuperUser | NormalUser
 		},
 		{
 			name: "with directives",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(strings.NewReader(`
+			schema: `
 union User @deprecated = SuperUser | NormalUser
-`),
-					),
-				),
+`,
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.UnionTypeDefinition{
@@ -75,7 +69,10 @@ union User @deprecated = SuperUser | NormalUser
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseUnionTypeDefinition(tt.args.l, tt.args.description)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseUnionTypeDefinition(tt.args.description)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseUnionTypeDefinition() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -88,25 +85,17 @@ union User @deprecated = SuperUser | NormalUser
 }
 
 func TestParseUnionTypeExtension(t *testing.T) {
-	type args struct {
-		l *LexerWrapper
-	}
 	tests := []struct {
 		name    string
-		args    args
+		schema  string
 		wantDef *ast.UnionTypeExtension
 		wantErr bool
 	}{
 		{
 			name: "simple union type extension",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(strings.NewReader(`
+			schema: `
 union Restaurant = ItalianRestaurant
-`),
-					),
-				),
-			},
+`,
 			wantDef: &ast.UnionTypeExtension{
 				Name: "Restaurant",
 				MemberTypes: []ast.Type{
@@ -118,14 +107,9 @@ union Restaurant = ItalianRestaurant
 		},
 		{
 			name: "only directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(strings.NewReader(`
+			schema: `
 union Restaurant @union_directive
-`),
-					),
-				),
-			},
+`,
 			wantDef: &ast.UnionTypeExtension{
 				Name: "Restaurant",
 				Directives: []ast.Directive{
@@ -137,14 +121,9 @@ union Restaurant @union_directive
 		},
 		{
 			name: "extend but do nothing",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(strings.NewReader(`
+			schema: `
 union Restaurant
-`),
-					),
-				),
-			},
+`,
 			wantDef: &ast.UnionTypeExtension{
 				Name: "Restaurant",
 			},
@@ -152,7 +131,10 @@ union Restaurant
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseUnionTypeExtension(tt.args.l)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseUnionTypeExtension()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseUnionTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
 				return

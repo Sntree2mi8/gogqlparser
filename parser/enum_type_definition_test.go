@@ -10,29 +10,24 @@ import (
 
 func TestParseEnumTypeDefinition(t *testing.T) {
 	type args struct {
-		l           *LexerWrapper
 		description string
 	}
 	tests := []struct {
 		name    string
+		schema  string
 		args    args
 		wantDef *ast.EnumTypeDefinition
 		wantErr bool
 	}{
 		{
 			name: "simple enum",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 enum UserKind {
 	ADMIN
 	NORMAL
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.EnumTypeDefinition{
@@ -54,18 +49,13 @@ enum UserKind {
 		},
 		{
 			name: "with directives",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 enum UserKind @deprecated {
 	ADMIN @deprecated
 	NORMAL
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.EnumTypeDefinition{
@@ -97,10 +87,7 @@ enum UserKind @deprecated {
 		},
 		{
 			name: "with enum value description",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 enum UserKind {
 	"this is admin" ADMIN
 	"""
@@ -109,9 +96,7 @@ enum UserKind {
 	NORMAL
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.EnumTypeDefinition{
@@ -136,7 +121,10 @@ enum UserKind {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseEnumTypeDefinition(tt.args.l, tt.args.description)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseEnumTypeDefinition(tt.args.description)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseEnumTypeDefinition() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -151,29 +139,19 @@ enum UserKind {
 // NOTION:
 // "extend" keyword is assumed to be consumed before this function is called
 func TestParseEnumExtensionDefinition(t *testing.T) {
-	type args struct {
-		l *LexerWrapper
-	}
 	tests := []struct {
 		name    string
-		args    args
+		schema  string
 		wantDef *ast.EnumTypeExtension
 		wantErr bool
 	}{
 		{
 			name: "simple enum extension",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 enum RestaurantKind {
         CHINESE
 }
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.EnumTypeExtension{
 				Name: "RestaurantKind",
 				EnumValue: []ast.EnumValueDefinition{
@@ -187,16 +165,9 @@ enum RestaurantKind {
 		},
 		{
 			name: "only directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 enum RestaurantKind @enum_directive
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.EnumTypeExtension{
 				Name: "RestaurantKind",
 				Directives: []ast.Directive{
@@ -208,16 +179,9 @@ enum RestaurantKind @enum_directive
 		},
 		{
 			name: "extend but do nothing",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 enum RestaurantKind
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.EnumTypeExtension{
 				Name: "RestaurantKind",
 			},
@@ -225,7 +189,10 @@ enum RestaurantKind
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseEnumTypeExtension(tt.args.l)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseEnumTypeExtension()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseEnumTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
 				return

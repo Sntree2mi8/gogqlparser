@@ -7,35 +7,35 @@ import (
 )
 
 // https://spec.graphql.org/October2021/#sec-Objects
-func ParseObjectTypeDefinition(l *LexerWrapper, description string) (d *ast.ObjectTypeDefinition, err error) {
+func (p *parser) ParseObjectTypeDefinition(description string) (d *ast.ObjectTypeDefinition, err error) {
 	d = &ast.ObjectTypeDefinition{
 		Description: description,
 	}
 
-	if err = l.SkipKeyword("type"); err != nil {
+	if err = p.SkipKeyword("type"); err != nil {
 		return nil, err
 	}
 
-	if d.Name, err = l.ReadNameValue(); err != nil {
+	if d.Name, err = p.ReadNameValue(); err != nil {
 		return nil, err
 	}
 
-	if l.CheckKeyword("implements") {
-		if d.Interfaces, err = parseImplementsInterfaces(l); err != nil {
+	if p.CheckKeyword("implements") {
+		if d.Interfaces, err = p.parseImplementsInterfaces(); err != nil {
 			return nil, err
 		}
 	}
 
-	if l.CheckKind(gogqllexer.At) {
-		if d.Directives, err = parseDirectives(l); err != nil {
+	if p.CheckKind(gogqllexer.At) {
+		if d.Directives, err = p.parseDirectives(); err != nil {
 			return nil, err
 		}
 	}
 
-	if err = l.PeekAndMustBe(
+	if err = p.PeekAndMustBe(
 		[]gogqllexer.Kind{gogqllexer.BraceL},
 		func(t gogqllexer.Token, advanceLexer func()) error {
-			if d.FieldDefinitions, err = parseFieldsDefinition(l); err != nil {
+			if d.FieldDefinitions, err = p.parseFieldsDefinition(); err != nil {
 				return err
 			}
 			return nil
@@ -51,36 +51,36 @@ func ParseObjectTypeDefinition(l *LexerWrapper, description string) (d *ast.Obje
 // "extend" keyword must be consumed before calling this function.
 //
 // Reference: https://spec.graphql.org/October2021/#sec-Object-Extensions
-func ParseObjectTypeExtension(l *LexerWrapper) (def *ast.ObjectTypeExtension, err error) {
+func (p *parser) ParseObjectTypeExtension() (def *ast.ObjectTypeExtension, err error) {
 	def = &ast.ObjectTypeExtension{}
 
-	if err = l.SkipKeyword("type"); err != nil {
+	if err = p.SkipKeyword("type"); err != nil {
 		return nil, err
 	}
 
-	if def.Name, err = l.ReadNameValue(); err != nil {
+	if def.Name, err = p.ReadNameValue(); err != nil {
 		return nil, err
 	}
 
 	var canOmitFields bool
-	if l.CheckKeyword("implements") {
-		if def.ImplementInterfaces, err = parseImplementsInterfaces(l); err != nil {
+	if p.CheckKeyword("implements") {
+		if def.ImplementInterfaces, err = p.parseImplementsInterfaces(); err != nil {
 			return nil, err
 		}
 
 		canOmitFields = true
 	}
 
-	if l.CheckKind(gogqllexer.At) {
-		if def.Directives, err = parseDirectives(l); err != nil {
+	if p.CheckKind(gogqllexer.At) {
+		if def.Directives, err = p.parseDirectives(); err != nil {
 			return nil, err
 		}
 
 		canOmitFields = true
 	}
 
-	if l.CheckKind(gogqllexer.BraceL) {
-		if def.FieldsDefinition, err = parseFieldsDefinition(l); err != nil {
+	if p.CheckKind(gogqllexer.BraceL) {
+		if def.FieldsDefinition, err = p.parseFieldsDefinition(); err != nil {
 			return nil, err
 		}
 	} else if !canOmitFields {

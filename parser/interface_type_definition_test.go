@@ -10,29 +10,24 @@ import (
 
 func TestParseInterfaceTypeDefinition(t *testing.T) {
 	type args struct {
-		l           *LexerWrapper
 		description string
 	}
 	tests := []struct {
 		name    string
+		schema  string
 		args    args
 		wantD   *ast.InterfaceTypeDefinition
 		wantErr bool
 	}{
 		{
 			name: "implements interface",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 interface User implements Node {
 	id: ID!
 	name: String!
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantD: &ast.InterfaceTypeDefinition{
@@ -59,18 +54,13 @@ interface User implements Node {
 		},
 		{
 			name: "with directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 interface User @deprecated(reason: "this is deprecated") {
 	id: ID!
 	name: String!
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantD: &ast.InterfaceTypeDefinition{
@@ -107,18 +97,13 @@ interface User @deprecated(reason: "this is deprecated") {
 		},
 		{
 			name: "with directive, implements interface",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 interface User implements Node @deprecated(reason: "this is deprecated") {
 	id: ID!
 	name: String!
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantD: &ast.InterfaceTypeDefinition{
@@ -157,7 +142,10 @@ interface User implements Node @deprecated(reason: "this is deprecated") {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotD, err := ParseInterfaceTypeDefinition(tt.args.l, tt.args.description)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotD, err := p.ParseInterfaceTypeDefinition(tt.args.description)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseInterfaceTypeDefinition() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -170,29 +158,19 @@ interface User implements Node @deprecated(reason: "this is deprecated") {
 }
 
 func TestParseInterfaceTypeExtension(t *testing.T) {
-	type args struct {
-		l *LexerWrapper
-	}
 	tests := []struct {
 		name    string
-		args    args
+		schema  string
 		wantDef *ast.InterfaceTypeExtension
 		wantErr bool
 	}{
 		{
 			name: "simple interface type extension",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 interface RestaurantInterface {
     address: String!
 }
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.InterfaceTypeExtension{
 				Name: "RestaurantInterface",
 				FieldsDefinition: []*ast.FieldDefinition{
@@ -208,16 +186,9 @@ interface RestaurantInterface {
 		},
 		{
 			name: "implements other interface",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 interface RestaurantInterface implements Store
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.InterfaceTypeExtension{
 				Name:                "RestaurantInterface",
 				ImplementInterfaces: []string{"Store"},
@@ -225,16 +196,9 @@ interface RestaurantInterface implements Store
 		},
 		{
 			name: "onply directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 interface RestaurantInterface @interface_directive
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.InterfaceTypeExtension{
 				Name: "RestaurantInterface",
 				Directives: []ast.Directive{
@@ -246,16 +210,9 @@ interface RestaurantInterface @interface_directive
 		},
 		{
 			name: "extend but do nothing",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 interface RestaurantInterface
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.InterfaceTypeExtension{
 				Name: "RestaurantInterface",
 			},
@@ -263,7 +220,10 @@ interface RestaurantInterface
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseInterfaceTypeExtension(tt.args.l)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseInterfaceTypeExtension()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseInterfaceTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
 				return

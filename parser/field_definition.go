@@ -6,21 +6,21 @@ import (
 )
 
 // https://spec.graphql.org/October2021/#FieldsDefinition
-func parseFieldsDefinition(l *LexerWrapper) (d []*ast.FieldDefinition, err error) {
-	if err = l.Skip(gogqllexer.BraceL); err != nil {
+func (p *parser) parseFieldsDefinition() (d []*ast.FieldDefinition, err error) {
+	if err = p.Skip(gogqllexer.BraceL); err != nil {
 		return nil, err
 	}
 
 	for {
 		var fieldDefinition *ast.FieldDefinition
-		fieldDefinition, err = parseFieldDefinition(l)
+		fieldDefinition, err = p.parseFieldDefinition()
 		if err != nil {
 			return nil, err
 		}
 
 		d = append(d, fieldDefinition)
 
-		if l.SkipIf(gogqllexer.BraceR) {
+		if p.SkipIf(gogqllexer.BraceR) {
 			break
 		}
 	}
@@ -29,29 +29,29 @@ func parseFieldsDefinition(l *LexerWrapper) (d []*ast.FieldDefinition, err error
 }
 
 // https://spec.graphql.org/October2021/#FieldDefinition
-func parseFieldDefinition(l *LexerWrapper) (d *ast.FieldDefinition, err error) {
+func (p *parser) parseFieldDefinition() (d *ast.FieldDefinition, err error) {
 	d = &ast.FieldDefinition{}
 
-	d.Description, _ = l.ReadDescription()
+	d.Description, _ = p.ReadDescription()
 
-	if d.Name, err = l.ReadNameValue(); err != nil {
+	if d.Name, err = p.ReadNameValue(); err != nil {
 		return nil, err
 	}
 
-	if l.CheckKind(gogqllexer.ParenL) {
-		if d.ArgumentDefinition, err = ParseArgumentsDefinition(l); err != nil {
+	if p.CheckKind(gogqllexer.ParenL) {
+		if d.ArgumentDefinition, err = p.ParseArgumentsDefinition(); err != nil {
 			return nil, err
 		}
 	}
 
-	if err = l.Skip(gogqllexer.Colon); err != nil {
+	if err = p.Skip(gogqllexer.Colon); err != nil {
 		return nil, err
 	}
 
-	if err = l.PeekAndMustBe(
+	if err = p.PeekAndMustBe(
 		[]gogqllexer.Kind{gogqllexer.Name},
 		func(t gogqllexer.Token, advanceLexer func()) error {
-			if d.Type, err = parseType(l); err != nil {
+			if d.Type, err = p.parseType(); err != nil {
 				return err
 			}
 			return nil
@@ -60,8 +60,8 @@ func parseFieldDefinition(l *LexerWrapper) (d *ast.FieldDefinition, err error) {
 		return nil, err
 	}
 
-	if l.CheckKind(gogqllexer.At) {
-		if d.Directives, err = parseDirectives(l); err != nil {
+	if p.CheckKind(gogqllexer.At) {
+		if d.Directives, err = p.parseDirectives(); err != nil {
 			return nil, err
 		}
 	}

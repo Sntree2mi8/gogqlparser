@@ -6,10 +6,10 @@ import (
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
 
-func ParseRootOperationTypeDefinitions(l *LexerWrapper) (defs map[string]*ast.RootOperationTypeDefinition, err error) {
+func (p *parser) ParseRootOperationTypeDefinitions() (defs map[string]*ast.RootOperationTypeDefinition, err error) {
 	defs = make(map[string]*ast.RootOperationTypeDefinition)
 
-	if err := l.Skip(gogqllexer.BraceL); err != nil {
+	if err := p.Skip(gogqllexer.BraceL); err != nil {
 		return nil, err
 	}
 
@@ -17,7 +17,7 @@ func ParseRootOperationTypeDefinitions(l *LexerWrapper) (defs map[string]*ast.Ro
 		var rootOperationName string
 		var rootOperationTypeName string
 
-		if rootOperationName, err = l.ReadNameValue(); err != nil {
+		if rootOperationName, err = p.ReadNameValue(); err != nil {
 			return nil, err
 		}
 
@@ -27,11 +27,11 @@ func ParseRootOperationTypeDefinitions(l *LexerWrapper) (defs map[string]*ast.Ro
 		case "query", "mutation", "subscription":
 		}
 
-		if err = l.Skip(gogqllexer.Colon); err != nil {
+		if err = p.Skip(gogqllexer.Colon); err != nil {
 			return nil, err
 		}
 
-		if rootOperationTypeName, err = l.ReadNameValue(); err != nil {
+		if rootOperationTypeName, err = p.ReadNameValue(); err != nil {
 			return nil, err
 		}
 
@@ -43,7 +43,7 @@ func ParseRootOperationTypeDefinitions(l *LexerWrapper) (defs map[string]*ast.Ro
 			Type: rootOperationTypeName,
 		}
 
-		if l.SkipIf(gogqllexer.BraceR) {
+		if p.SkipIf(gogqllexer.BraceR) {
 			break
 		}
 	}
@@ -55,17 +55,17 @@ func ParseRootOperationTypeDefinitions(l *LexerWrapper) (defs map[string]*ast.Ro
 	return defs, err
 }
 
-func ParseSchemaDefinition(l *LexerWrapper, description string) (def *ast.SchemaDefinition, err error) {
+func (p *parser) ParseSchemaDefinition(description string) (def *ast.SchemaDefinition, err error) {
 	def = &ast.SchemaDefinition{
 		Description: description,
 	}
 
-	if err = l.SkipKeyword("schema"); err != nil {
+	if err = p.SkipKeyword("schema"); err != nil {
 		return nil, err
 	}
 
-	if l.CheckKind(gogqllexer.BraceL) {
-		rootOperationTypeDefs, err := ParseRootOperationTypeDefinitions(l)
+	if p.CheckKind(gogqllexer.BraceL) {
+		rootOperationTypeDefs, err := p.ParseRootOperationTypeDefinitions()
 		if err != nil {
 			return nil, err
 		}
@@ -82,24 +82,24 @@ func ParseSchemaDefinition(l *LexerWrapper, description string) (def *ast.Schema
 // ParseSchemaExtension parse schema extension.
 // "extend" keyword must be consumed before calling this function.
 //
-// Reference: https://spec.graphql.org/October2021/#sec-Schema-Extension
-func ParseSchemaExtension(l *LexerWrapper) (def *ast.SchemaExtension, err error) {
+// Reference: https://spec.graphqp.org/October2021/#sec-Schema-Extension
+func (p *parser) ParseSchemaExtension() (def *ast.SchemaExtension, err error) {
 	def = &ast.SchemaExtension{}
 
-	if err = l.SkipKeyword("schema"); err != nil {
+	if err = p.SkipKeyword("schema"); err != nil {
 		return nil, err
 	}
 	var canOmitRootOperationTypes bool
-	if l.CheckKind(gogqllexer.At) {
-		if def.Directives, err = parseDirectives(l); err != nil {
+	if p.CheckKind(gogqllexer.At) {
+		if def.Directives, err = p.parseDirectives(); err != nil {
 			return nil, err
 		}
 
 		canOmitRootOperationTypes = true
 	}
 
-	if l.CheckKind(gogqllexer.BraceL) {
-		rootOperationTypeDefs, err := ParseRootOperationTypeDefinitions(l)
+	if p.CheckKind(gogqllexer.BraceL) {
+		rootOperationTypeDefs, err := p.ParseRootOperationTypeDefinitions()
 		if err != nil {
 			return nil, err
 		}

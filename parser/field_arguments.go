@@ -6,26 +6,26 @@ import (
 	"github.com/Sntree2mi8/gogqlparser/ast"
 )
 
-func ParseArgumentsDefinition(l *LexerWrapper) (defs []ast.InputValueDefinition, err error) {
-	if err = l.Skip(gogqllexer.ParenL); err != nil {
+func (p *parser) ParseArgumentsDefinition() (defs []ast.InputValueDefinition, err error) {
+	if err = p.Skip(gogqllexer.ParenL); err != nil {
 		return nil, err
 	}
 
 	for {
 		var inputValDescription string
-		inputValDescription, _ = l.ReadDescription()
+		inputValDescription, _ = p.ReadDescription()
 
-		if l.CheckKind(gogqllexer.Name) {
-			ivd, err := parseInputValueDefinition(l, inputValDescription)
+		if p.CheckKind(gogqllexer.Name) {
+			ivd, err := p.parseInputValueDefinition(inputValDescription)
 			if err != nil {
 				return nil, err
 			}
 			defs = append(defs, ivd)
 		} else {
-			return nil, fmt.Errorf("unexpected token %+v", l.PeekToken())
+			return nil, fmt.Errorf("unexpected token %+v", p.PeekToken())
 		}
 
-		if l.SkipIf(gogqllexer.ParenR) {
+		if p.SkipIf(gogqllexer.ParenR) {
 			break
 		}
 	}
