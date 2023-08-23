@@ -9,28 +9,17 @@ import (
 )
 
 func TestParseScalarTypeExtension(t *testing.T) {
-	type args struct {
-		l *LexerWrapper
-	}
 	tests := []struct {
 		name    string
-		args    args
+		schema  string
 		wantDef *ast.ScalarTypeExtension
 		wantErr bool
 	}{
 		{
 			name: "simple scalar type extension",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(
-							`
+			schema: `
 scalar Int @max(n: 100)
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.ScalarTypeExtension{
 				Name: "Int",
 				Directives: []ast.Directive{
@@ -48,27 +37,22 @@ scalar Int @max(n: 100)
 		},
 		{
 			name: "scalar type extension needs at least one directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(
-							`
+			schema: `
 scalar Int
 
 type Example {
     name: String!
 }
 `,
-						),
-					),
-				),
-			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseScalarTypeExtension(tt.args.l)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseScalarTypeExtension()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseScalarTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
 				return

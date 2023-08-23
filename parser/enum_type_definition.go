@@ -6,28 +6,28 @@ import (
 )
 
 // https://spec.graphql.org/October2021/#EnumValuesDefinition
-func parseEnumValuesDefinition(l *LexerWrapper) (enumValuesDef []ast.EnumValueDefinition, err error) {
-	if err = l.Skip(gogqllexer.BraceL); err != nil {
+func (p *parser) parseEnumValuesDefinition() (enumValuesDef []ast.EnumValueDefinition, err error) {
+	if err = p.Skip(gogqllexer.BraceL); err != nil {
 		return nil, err
 	}
 
 	for {
 		var enumValueDef ast.EnumValueDefinition
-		enumValueDef.Description, _ = l.ReadDescription()
+		enumValueDef.Description, _ = p.ReadDescription()
 
-		if enumValueDef.Value.Value, err = l.ReadNameValue(); err != nil {
+		if enumValueDef.Value.Value, err = p.ReadNameValue(); err != nil {
 			return nil, err
 		}
 
-		if l.CheckKind(gogqllexer.At) {
-			if enumValueDef.Directives, err = parseDirectives(l); err != nil {
+		if p.CheckKind(gogqllexer.At) {
+			if enumValueDef.Directives, err = p.parseDirectives(); err != nil {
 				return nil, err
 			}
 		}
 
 		enumValuesDef = append(enumValuesDef, enumValueDef)
 
-		if l.SkipIf(gogqllexer.BraceR) {
+		if p.SkipIf(gogqllexer.BraceR) {
 			break
 		}
 	}
@@ -35,26 +35,26 @@ func parseEnumValuesDefinition(l *LexerWrapper) (enumValuesDef []ast.EnumValueDe
 }
 
 // https://spec.graphql.org/October2021/#sec-Enums
-func ParseEnumTypeDefinition(l *LexerWrapper, description string) (def *ast.EnumTypeDefinition, err error) {
+func (p *parser) ParseEnumTypeDefinition(description string) (def *ast.EnumTypeDefinition, err error) {
 	def = &ast.EnumTypeDefinition{
 		Description: description,
 	}
 
-	if err = l.SkipKeyword("enum"); err != nil {
+	if err = p.SkipKeyword("enum"); err != nil {
 		return nil, err
 	}
 
-	if def.Name, err = l.ReadNameValue(); err != nil {
+	if def.Name, err = p.ReadNameValue(); err != nil {
 		return nil, err
 	}
 
-	if l.CheckKind(gogqllexer.At) {
-		if def.Directives, err = parseDirectives(l); err != nil {
+	if p.CheckKind(gogqllexer.At) {
+		if def.Directives, err = p.parseDirectives(); err != nil {
 			return nil, err
 		}
 	}
 
-	if def.EnumValue, err = parseEnumValuesDefinition(l); err != nil {
+	if def.EnumValue, err = p.parseEnumValuesDefinition(); err != nil {
 		return nil, err
 	}
 
@@ -63,25 +63,25 @@ func ParseEnumTypeDefinition(l *LexerWrapper, description string) (def *ast.Enum
 
 // https://spec.graphql.org/October2021/#sec-Enum-Extensions
 // NOTION: consume "extend" keyword before call this function.
-func ParseEnumTypeExtension(l *LexerWrapper) (def *ast.EnumTypeExtension, err error) {
+func (p *parser) ParseEnumTypeExtension() (def *ast.EnumTypeExtension, err error) {
 	def = &ast.EnumTypeExtension{}
 
-	if err := l.SkipKeyword("enum"); err != nil {
+	if err := p.SkipKeyword("enum"); err != nil {
 		return nil, err
 	}
 
-	if def.Name, err = l.ReadNameValue(); err != nil {
+	if def.Name, err = p.ReadNameValue(); err != nil {
 		return nil, err
 	}
 
-	if l.CheckKind(gogqllexer.At) {
-		if def.Directives, err = parseDirectives(l); err != nil {
+	if p.CheckKind(gogqllexer.At) {
+		if def.Directives, err = p.parseDirectives(); err != nil {
 			return nil, err
 		}
 	}
 
-	if l.CheckKind(gogqllexer.BraceL) {
-		if def.EnumValue, err = parseEnumValuesDefinition(l); err != nil {
+	if p.CheckKind(gogqllexer.BraceL) {
+		if def.EnumValue, err = p.parseEnumValuesDefinition(); err != nil {
 			return nil, err
 		}
 	}

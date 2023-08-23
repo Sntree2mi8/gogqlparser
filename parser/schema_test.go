@@ -9,47 +9,30 @@ import (
 )
 
 func TestParseSchemaExtension(t *testing.T) {
-	type args struct {
-		l *LexerWrapper
-	}
 	tests := []struct {
 		name    string
-		args    args
+		schema  string
 		wantDef *ast.SchemaExtension
 		wantErr bool
 	}{
 		{
 			name: "simple schema extension",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 schema {
     query: Query
 }
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.SchemaExtension{
 				Query: &ast.RootOperationTypeDefinition{Type: "Query"},
 			},
 		},
 		{
 			name: "with directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 schema @schema_directive {
     query: Query
 }
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.SchemaExtension{
 				Directives: []ast.Directive{
 					{
@@ -61,16 +44,9 @@ schema @schema_directive {
 		},
 		{
 			name: "directive only",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 schema @schema_directive
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.SchemaExtension{
 				Directives: []ast.Directive{
 					{
@@ -81,22 +57,18 @@ schema @schema_directive
 		},
 		{
 			name: "extend but do nothing",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 schema
 `,
-						),
-					),
-				),
-			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseSchemaExtension(tt.args.l)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseSchemaExtension()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseSchemaExtension() error = %v, wantErr %v", err, tt.wantErr)
 				return

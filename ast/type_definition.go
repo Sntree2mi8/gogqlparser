@@ -17,13 +17,6 @@ type TypeDefinition interface {
 	TypeDefinitionKind() TypeDefinitionKind
 }
 
-var _ TypeDefinition = (*ScalarTypeDefinition)(nil)
-var _ TypeDefinition = (*ObjectTypeDefinition)(nil)
-var _ TypeDefinition = (*InterfaceTypeDefinition)(nil)
-var _ TypeDefinition = (*UnionTypeDefinition)(nil)
-var _ TypeDefinition = (*EnumTypeDefinition)(nil)
-var _ TypeDefinition = (*InputObjectTypeDefinition)(nil)
-
 type ScalarTypeDefinition struct {
 	Description string
 	Name        string

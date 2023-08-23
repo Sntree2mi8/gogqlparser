@@ -8,29 +8,22 @@ import (
 	"testing"
 )
 
-func TestParseDirectiveDefinition(t *testing.T) {
+func Test_parser_ParseDirectiveDefinition(t *testing.T) {
 	type args struct {
-		l           *LexerWrapper
 		description string
 	}
 	tests := []struct {
 		name    string
+		schema  string
 		args    args
 		wantDef *ast.DirectiveDefinition
 		wantErr bool
 	}{
 		{
 			name: "simple directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing on SCHEMA
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.DirectiveDefinition{
 				Name: "testing",
 				DirectiveLocations: []ast.DirectiveLocation{
@@ -40,15 +33,10 @@ directive @testing on SCHEMA
 		},
 		{
 			name: "with description",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing on SCHEMA
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.DirectiveDefinition{
@@ -61,16 +49,9 @@ directive @testing on SCHEMA
 		},
 		{
 			name: "with argumentsDefinition",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing(arg1: String!) on SCHEMA
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.DirectiveDefinition{
 				Name: "testing",
 				DirectiveLocations: []ast.DirectiveLocation{
@@ -89,16 +70,9 @@ directive @testing(arg1: String!) on SCHEMA
 		},
 		{
 			name: "with repeatable",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing repeatable on SCHEMA
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.DirectiveDefinition{
 				Name: "testing",
 				DirectiveLocations: []ast.DirectiveLocation{
@@ -109,15 +83,10 @@ directive @testing repeatable on SCHEMA
 		},
 		{
 			name: "with all optional items",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing(arg1: String!) repeatable on SCHEMA
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.DirectiveDefinition{
@@ -140,16 +109,9 @@ directive @testing(arg1: String!) repeatable on SCHEMA
 		},
 		{
 			name: "single directive location",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing on SCHEMA
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.DirectiveDefinition{
 				Name: "testing",
 				DirectiveLocations: []ast.DirectiveLocation{
@@ -159,16 +121,9 @@ directive @testing on SCHEMA
 		},
 		{
 			name: "single directive location with leading pipe",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing on | SCHEMA
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.DirectiveDefinition{
 				Name: "testing",
 				DirectiveLocations: []ast.DirectiveLocation{
@@ -178,16 +133,9 @@ directive @testing on | SCHEMA
 		},
 		{
 			name: "multiple directive locations",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing on SCHEMA | SCALAR | OBJECT
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.DirectiveDefinition{
 				Name: "testing",
 				DirectiveLocations: []ast.DirectiveLocation{
@@ -199,10 +147,7 @@ directive @testing on SCHEMA | SCALAR | OBJECT
 		},
 		{
 			name: "parse all type system directive locations",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 directive @testing on SCHEMA 
 | SCALAR 
 | OBJECT 
@@ -215,10 +160,6 @@ directive @testing on SCHEMA
 | INPUT_OBJECT 
 | INPUT_FIELD_DEFINITION
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.DirectiveDefinition{
 				Name: "testing",
 				DirectiveLocations: []ast.DirectiveLocation{
@@ -239,7 +180,10 @@ directive @testing on SCHEMA
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseDirectiveDefinition(tt.args.l, tt.args.description)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseDirectiveDefinition(tt.args.description)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseDirectiveDefinition() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -10,28 +10,23 @@ import (
 
 func TestParseInputObjectTypeDefinition(t *testing.T) {
 	type args struct {
-		l           *LexerWrapper
 		description string
 	}
 	tests := []struct {
 		name    string
+		schema  string
 		args    args
 		wantDef *ast.InputObjectTypeDefinition
 		wantErr bool
 	}{
 		{
 			name: "simple input object",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 input User {
 	name: String!
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.InputObjectTypeDefinition{
@@ -51,17 +46,12 @@ input User {
 		},
 		{
 			name: "with directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 input User @deprecated @danger {
 	name: String!
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.InputObjectTypeDefinition{
@@ -89,18 +79,13 @@ input User @deprecated @danger {
 		},
 		{
 			name: "with field directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 input User {
 	"name is deprecated"
 	name: String! @deprecated
 }
 `,
-						),
-					),
-				),
+			args: args{
 				description: "this is description",
 			},
 			wantDef: &ast.InputObjectTypeDefinition{
@@ -127,7 +112,10 @@ input User {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseInputObjectTypeDefinition(tt.args.l, tt.args.description)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseInputObjectTypeDefinition(tt.args.description)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseInputObjectTypeDefinition() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -140,29 +128,19 @@ input User {
 }
 
 func TestParseInputObjectTypeExtension(t *testing.T) {
-	type args struct {
-		l *LexerWrapper
-	}
 	tests := []struct {
 		name    string
-		args    args
+		schema  string
 		wantDef *ast.InputObjectTypeExtension
 		wantErr bool
 	}{
 		{
 			name: "simple input object extension",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 input Restaurant {
 	name: String!
 }
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.InputObjectTypeExtension{
 				Name: "Restaurant",
 				InputsFieldDefinition: []ast.InputValueDefinition{
@@ -178,16 +156,9 @@ input Restaurant {
 		},
 		{
 			name: "only directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 input Restaurant @input_directive
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.InputObjectTypeExtension{
 				Name: "Restaurant",
 				Directives: []ast.Directive{
@@ -199,18 +170,11 @@ input Restaurant @input_directive
 		},
 		{
 			name: "directive and field",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 input Restaurant @input_directive {
     name: String!
 }
 `,
-						),
-					),
-				),
-			},
 			wantDef: &ast.InputObjectTypeExtension{
 				Name: "Restaurant",
 				Directives: []ast.Directive{
@@ -231,26 +195,22 @@ input Restaurant @input_directive {
 		},
 		{
 			name: "extend input object type needs at least one field or directive",
-			args: args{
-				l: NewLexerWrapper(
-					gogqllexer.New(
-						strings.NewReader(`
+			schema: `
 input Restaurant 
 
 type OtherType {
 	name: String!
 }
 `,
-						),
-					),
-				),
-			},
 			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotDef, err := ParseInputObjectTypeExtension(tt.args.l)
+			p := &parser{
+				lexer: gogqllexer.New(strings.NewReader(tt.schema)),
+			}
+			gotDef, err := p.ParseInputObjectTypeExtension()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ParseInputObjectTypeExtension() error = %v, wantErr %v", err, tt.wantErr)
 				return

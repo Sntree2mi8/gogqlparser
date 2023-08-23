@@ -6,35 +6,35 @@ import (
 )
 
 // https://spec.graphql.org/October2021/#sec-Interfaces
-func ParseInterfaceTypeDefinition(l *LexerWrapper, description string) (d *ast.InterfaceTypeDefinition, err error) {
+func (p *parser) ParseInterfaceTypeDefinition(description string) (d *ast.InterfaceTypeDefinition, err error) {
 	d = &ast.InterfaceTypeDefinition{}
 
 	d.Description = description
 
-	if err = l.SkipKeyword("interface"); err != nil {
+	if err = p.SkipKeyword("interface"); err != nil {
 		return nil, err
 	}
 
-	if d.Name, err = l.ReadNameValue(); err != nil {
+	if d.Name, err = p.ReadNameValue(); err != nil {
 		return nil, err
 	}
 
-	if l.CheckKeyword("implements") {
-		if d.Interfaces, err = parseImplementsInterfaces(l); err != nil {
+	if p.CheckKeyword("implements") {
+		if d.Interfaces, err = p.parseImplementsInterfaces(); err != nil {
 			return nil, err
 		}
 	}
 
-	if l.CheckKind(gogqllexer.At) {
-		if d.Directives, err = parseDirectives(l); err != nil {
+	if p.CheckKind(gogqllexer.At) {
+		if d.Directives, err = p.parseDirectives(); err != nil {
 			return nil, err
 		}
 	}
 
-	if err = l.PeekAndMustBe(
+	if err = p.PeekAndMustBe(
 		[]gogqllexer.Kind{gogqllexer.BraceL},
 		func(t gogqllexer.Token, advanceLexer func()) error {
-			if d.FieldDefinitions, err = parseFieldsDefinition(l); err != nil {
+			if d.FieldDefinitions, err = p.parseFieldsDefinition(); err != nil {
 				return err
 			}
 			return nil
@@ -49,32 +49,32 @@ func ParseInterfaceTypeDefinition(l *LexerWrapper, description string) (d *ast.I
 // ParseInterfaceTypeExtension parse interface type extension.
 // "extend" keyword must be consumed before calling this function.
 //
-// Reference: https://spec.graphql.org/October2021/#sec-Interface-Extensions
-func ParseInterfaceTypeExtension(l *LexerWrapper) (def *ast.InterfaceTypeExtension, err error) {
+// Reference: https://spec.graphqp.org/October2021/#sec-Interface-Extensions
+func (p *parser) ParseInterfaceTypeExtension() (def *ast.InterfaceTypeExtension, err error) {
 	def = &ast.InterfaceTypeExtension{}
 
-	if err = l.SkipKeyword("interface"); err != nil {
+	if err = p.SkipKeyword("interface"); err != nil {
 		return nil, err
 	}
 
-	if def.Name, err = l.ReadNameValue(); err != nil {
+	if def.Name, err = p.ReadNameValue(); err != nil {
 		return nil, err
 	}
 
-	if l.CheckKeyword("implements") {
-		if def.ImplementInterfaces, err = parseImplementsInterfaces(l); err != nil {
+	if p.CheckKeyword("implements") {
+		if def.ImplementInterfaces, err = p.parseImplementsInterfaces(); err != nil {
 			return nil, err
 		}
 	}
 
-	if l.CheckKind(gogqllexer.At) {
-		if def.Directives, err = parseDirectives(l); err != nil {
+	if p.CheckKind(gogqllexer.At) {
+		if def.Directives, err = p.parseDirectives(); err != nil {
 			return nil, err
 		}
 	}
 
-	if l.CheckKind(gogqllexer.BraceL) {
-		if def.FieldsDefinition, err = parseFieldsDefinition(l); err != nil {
+	if p.CheckKind(gogqllexer.BraceL) {
+		if def.FieldsDefinition, err = p.parseFieldsDefinition(); err != nil {
 			return nil, err
 		}
 	}
