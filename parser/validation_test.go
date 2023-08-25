@@ -5,41 +5,9 @@ import (
 	"testing"
 )
 
-func Test_validateDirectiveDefinitions_Valid(t *testing.T) {
+func Test_validateDirectiveDefinitions(t *testing.T) {
 	type args struct {
-		dds []ast.DirectiveDefinition
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		{
-			name: "valid directive",
-			args: args{
-				dds: []ast.DirectiveDefinition{
-					{
-						Name: "test",
-						DirectiveLocations: []ast.DirectiveLocation{
-							ast.DirectiveLocationField,
-						},
-					},
-				},
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := validateDirectiveDefinitions(tt.args.dds); (err != nil) != tt.wantErr {
-				t.Errorf("validateDirectiveDefinitions() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_validateDirectiveDefinitions_Invalid(t *testing.T) {
-	type args struct {
-		dds []ast.DirectiveDefinition
+		doc *ast.TypeSystemExtensionDocument
 	}
 	tests := []struct {
 		name    string
@@ -49,11 +17,37 @@ func Test_validateDirectiveDefinitions_Invalid(t *testing.T) {
 		{
 			name: "The directive must not have a name which begins with the characters \"__\" (two underscores).",
 			args: args{
-				dds: []ast.DirectiveDefinition{
-					{
-						Name: "__test",
-						DirectiveLocations: []ast.DirectiveLocation{
-							ast.DirectiveLocationField,
+				doc: &ast.TypeSystemExtensionDocument{
+					DirectiveDefinitions: []ast.DirectiveDefinition{
+						{
+							Name: "__test",
+							DirectiveLocations: []ast.DirectiveLocation{
+								ast.DirectiveLocationField,
+							},
+						},
+					},
+				},
+			},
+			wantErr: true,
+		},
+		{
+			name: "The argument must not have a name which begins with the characters \"__\" (two underscores).",
+			args: args{
+				doc: &ast.TypeSystemExtensionDocument{
+					DirectiveDefinitions: []ast.DirectiveDefinition{
+						{
+							Name: "test",
+							ArgumentsDefinition: []ast.InputValueDefinition{
+								{
+									Name: "__arg",
+									Type: ast.Type{
+										NamedType: "String",
+									},
+								},
+							},
+							DirectiveLocations: []ast.DirectiveLocation{
+								ast.DirectiveLocationField,
+							},
 						},
 					},
 				},
@@ -63,7 +57,7 @@ func Test_validateDirectiveDefinitions_Invalid(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := validateDirectiveDefinitions(tt.args.dds); (err != nil) != tt.wantErr {
+			if err := validateDirectiveDefinitions(tt.args.doc); (err != nil) != tt.wantErr {
 				t.Errorf("validateDirectiveDefinitions() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
