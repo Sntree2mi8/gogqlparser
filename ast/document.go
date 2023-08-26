@@ -4,6 +4,9 @@ type TypeSystemExtensionDocument struct {
 	SchemaDefinitions    []SchemaDefinition
 	TypeDefinitions      []TypeDefinition
 	DirectiveDefinitions []DirectiveDefinition
+
+	SchemaExtensions     []SchemaExtension
+	TypeSystemExtensions []TypeSystemExtension
 }
 
 func (d *TypeSystemExtensionDocument) Merge(others ...*TypeSystemExtensionDocument) (merged *TypeSystemExtensionDocument) {

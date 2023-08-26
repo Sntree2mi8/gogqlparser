@@ -18,6 +18,8 @@ type Query {
 	hello: String
 }
 
+scalar Hoge
+
 directive @schema_directive repeatable on SCHEMA
 directive @arg_directive(arg1: String) on INPUT_OBJECT
 input InputObjectForArgDirective @arg_directive(arg1: "arg1") {
