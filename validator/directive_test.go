@@ -1,4 +1,4 @@
-package parser
+package validator
 
 import (
 	"github.com/Sntree2mi8/gogqlparser/ast"
@@ -250,7 +250,7 @@ func Test_validateDirectiveDefinitions(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			v := newValidator(tt.args.doc)
+			v, _ := newValidator(tt.args.doc)
 			if err := v.validateDirectiveDefinitions(); (err != nil) != tt.wantErr {
 				t.Errorf("validateDirectiveDefinitions() error = %v, wantErr %v", err, tt.wantErr)
 			} else {

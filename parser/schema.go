@@ -64,6 +64,12 @@ func (p *parser) ParseSchemaDefinition(description string) (def *ast.SchemaDefin
 		return nil, err
 	}
 
+	if p.CheckKind(gogqllexer.At) {
+		if def.Directives, err = p.parseDirectives(); err != nil {
+			return nil, err
+		}
+	}
+
 	if p.CheckKind(gogqllexer.BraceL) {
 		rootOperationTypeDefs, err := p.ParseRootOperationTypeDefinitions()
 		if err != nil {

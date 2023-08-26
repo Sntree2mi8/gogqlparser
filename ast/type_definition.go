@@ -22,6 +22,7 @@ type TypeDefinition interface {
 type ScalarTypeDefinition struct {
 	Description string
 	Name        string
+	Directives  []Directive
 }
 
 func (d *ScalarTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {
@@ -33,7 +34,7 @@ func (d *ScalarTypeDefinition) TypeName() string {
 }
 
 func (d *ScalarTypeDefinition) GetDirectives() []Directive {
-	return nil
+	return d.Directives
 }
 
 type FieldDefinition struct {

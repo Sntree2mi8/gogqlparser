@@ -154,6 +154,12 @@ func ParseTypeSystemExtensionDocument(src *ast.Source) (doc *ast.TypeSystemExten
 				return nil, err
 			}
 			doc.TypeDefinitions = append(doc.TypeDefinitions, def)
+		case "scalar":
+			def, err := p.ParseScalarTypeDefinition(description)
+			if err != nil {
+				return nil, err
+			}
+			doc.TypeDefinitions = append(doc.TypeDefinitions, def)
 		case "directive":
 			directiveDefinition, err := p.ParseDirectiveDefinition(description)
 			if err != nil {
@@ -166,10 +172,65 @@ func ParseTypeSystemExtensionDocument(src *ast.Source) (doc *ast.TypeSystemExten
 				return nil, err
 			}
 			doc.SchemaDefinitions = append(doc.SchemaDefinitions, *schemaDef)
+		case "extend":
+			if err = p.SkipKeyword("extend"); err != nil {
+				return nil, err
+			}
+
+			keyword, err := p.ReadNameValue()
+			if err != nil {
+				return nil, err
+			}
+			switch keyword {
+			case "type":
+				def, err := p.ParseObjectTypeExtension()
+				if err != nil {
+					return nil, err
+				}
+				doc.TypeSystemExtensions = append(doc.TypeSystemExtensions, def)
+			case "interface":
+				def, err := p.ParseInterfaceTypeExtension()
+				if err != nil {
+					return nil, err
+				}
+				doc.TypeSystemExtensions = append(doc.TypeSystemExtensions, def)
+			case "union":
+				def, err := p.ParseUnionTypeExtension()
+				if err != nil {
+					return nil, err
+				}
+				doc.TypeSystemExtensions = append(doc.TypeSystemExtensions, def)
+			case "enum":
+				def, err := p.ParseEnumTypeExtension()
+				if err != nil {
+					return nil, err
+				}
+				doc.TypeSystemExtensions = append(doc.TypeSystemExtensions, def)
+			case "input":
+				def, err := p.ParseInputObjectTypeExtension()
+				if err != nil {
+					return nil, err
+				}
+				doc.TypeSystemExtensions = append(doc.TypeSystemExtensions, def)
+			case "scalar":
+				def, err := p.ParseScalarTypeExtension()
+				if err != nil {
+					return nil, err
+				}
+				doc.TypeSystemExtensions = append(doc.TypeSystemExtensions, def)
+			case "schema":
+				def, err := p.ParseSchemaExtension()
+				if err != nil {
+					return nil, err
+				}
+				doc.SchemaExtensions = append(doc.SchemaExtensions, *def)
+			default:
+				return nil, fmt.Errorf("unexpected token %+v", t.Value)
+			}
 		default:
 			return nil, fmt.Errorf("unexpected token %+v", t.Value)
 		}
 	}
 
-	return nil, nil
+	return doc, nil
 }
