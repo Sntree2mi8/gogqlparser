@@ -3,85 +3,95 @@ package validator
 import (
 	"fmt"
 	"github.com/Sntree2mi8/gogqlparser/ast"
-	"log"
 	"slices"
 	"strings"
 )
 
-func (v *validator) isInputType(t ast.Type) bool {
+func (v *validator) isInputType(t ast.Type) (bool, error) {
 	if t.ListType != nil {
 		return v.isInputType(*t.ListType)
 	}
 
 	td, ok := v.typeDefs[t.NamedType]
 	if !ok {
-		log.Println("type not found: ", t.NamedType)
-		return false
+		return false, fmt.Errorf("undefined type: %s", t.NamedType)
 	}
 	switch td.TypeDefinitionKind() {
 	case ast.TypeDefinitionKindScalar, ast.TypeDefinitionKindEnum, ast.TypeDefinitionKindInputObject:
-		return true
+		return true, nil
 	default:
-		return false
+		return false, nil
 	}
 }
 
-func (v *validator) checkDirectiveReferenceInDirective(dd ast.DirectiveDefinition, d ast.Directive) (hasReference bool) {
-	if d.Name == dd.Name {
+// この関数はastに送っても良さそう
+func getUnderlyingType(t ast.Type) ast.Type {
+	if t.ListType != nil {
+		return getUnderlyingType(*t.ListType)
+	}
+
+	return t
+}
+
+func (v *validator) checkSelfDirectiveReferenceInDirective(self ast.DirectiveDefinition, d ast.Directive) (hasReference bool) {
+	if d.Name == self.Name {
 		return true
 	}
 
 	for _, ad := range v.directiveDefs[d.Name].ArgumentsDefinition {
 		for _, adDir := range ad.Directives {
-			return v.checkDirectiveReferenceInDirective(dd, adDir)
+			return v.checkSelfDirectiveReferenceInDirective(self, adDir)
 		}
 	}
 
 	return false
 }
 
-func (v *validator) checkDirectiveReferenceInType(dd ast.DirectiveDefinition, t ast.Type) (hasReference bool) {
-	typeDef := v.typeDefs[t.NamedType]
+func (v *validator) checkSelfDirectiveReferenceInType(self ast.DirectiveDefinition, t ast.Type) (hasReference bool) {
+	typeDef := v.typeDefs[getUnderlyingType(t).NamedType]
 
+	// 自己参照を判定するこの関数自体がdirectiveの文脈からしか呼ばれないのでScalar, Enum, InputObject以外は考慮しない
 	switch typeDef.TypeDefinitionKind() {
 	case ast.TypeDefinitionKindScalar:
-		// TODO: 本当はscalarにもdirectiveをつけられるけど、まだ実装できていない
-		return false
-	case ast.TypeDefinitionKindEnum:
-		if slices.Contains(dd.DirectiveLocations, ast.DirectiveLocationEnum) {
+		if slices.Contains(self.DirectiveLocations, ast.DirectiveLocationScalar) {
 			for _, td := range typeDef.GetDirectives() {
-				if v.checkDirectiveReferenceInDirective(dd, td) {
+				if v.checkSelfDirectiveReferenceInDirective(self, td) {
 					return true
 				}
 			}
 		}
-		if slices.Contains(dd.DirectiveLocations, ast.DirectiveLocationEnumValue) {
+		return false
+	case ast.TypeDefinitionKindEnum:
+		if slices.Contains(self.DirectiveLocations, ast.DirectiveLocationEnum) {
+			for _, td := range typeDef.GetDirectives() {
+				if v.checkSelfDirectiveReferenceInDirective(self, td) {
+					return true
+				}
+			}
+		}
+		if slices.Contains(self.DirectiveLocations, ast.DirectiveLocationEnumValue) {
 			enumTypeDef := typeDef.(*ast.EnumTypeDefinition)
 			for _, ev := range enumTypeDef.EnumValue {
 				for _, evd := range ev.Directives {
-					if evd.Name == dd.Name {
-						return true
-					}
-
-					if v.checkDirectiveReferenceInDirective(dd, evd) {
+					if v.checkSelfDirectiveReferenceInDirective(self, evd) {
 						return true
 					}
 				}
 			}
 		}
 	case ast.TypeDefinitionKindInputObject:
-		if slices.Contains(dd.DirectiveLocations, ast.DirectiveLocationInputObject) {
+		if slices.Contains(self.DirectiveLocations, ast.DirectiveLocationInputObject) {
 			for _, td := range typeDef.GetDirectives() {
-				if v.checkDirectiveReferenceInDirective(dd, td) {
+				if v.checkSelfDirectiveReferenceInDirective(self, td) {
 					return true
 				}
 			}
 		}
-		if slices.Contains(dd.DirectiveLocations, ast.DirectiveLocationInputFieldDefinition) {
+		if slices.Contains(self.DirectiveLocations, ast.DirectiveLocationInputFieldDefinition) {
 			inputObjectTypeDef := typeDef.(*ast.InputObjectTypeDefinition)
 			for _, ifd := range inputObjectTypeDef.InputFields {
 				for _, ifdd := range ifd.Directives {
-					if v.checkDirectiveReferenceInDirective(dd, ifdd) {
+					if v.checkSelfDirectiveReferenceInDirective(self, ifdd) {
 						return true
 					}
 				}
@@ -102,25 +112,30 @@ func (v *validator) validateDirectiveDefinitions() error {
 
 		canUseOnArgumentDefinition := slices.Contains(dd.DirectiveLocations, ast.DirectiveLocationArgumentDefinition)
 		for _, ad := range dd.ArgumentsDefinition {
-			if canUseOnArgumentDefinition {
-				for _, adDir := range ad.Directives {
-					// argumentDefinitionに使用したdirectiveが直接参照もしくは間接的に参照をしていないかを確認する
-					if v.checkDirectiveReferenceInDirective(dd, adDir) {
-						return fmt.Errorf("directive %s must not contain the use of a directive which references itself", dd.Name)
-					}
-				}
-			}
-
 			if strings.HasPrefix(ad.Name, "__") {
 				return fmt.Errorf("argument name must not begins with \"__\": %s", ad.Name)
 			}
 
-			if !v.isInputType(ad.Type) {
-				return fmt.Errorf("argument %s must accept a type where IsInputType(argumentType) returns true", ad.Name)
+			inputType, err := v.isInputType(ad.Type)
+			if err != nil {
+				return err
+			}
+			if !inputType {
+				return fmt.Errorf("argument %s must be input type (scalar, enum, input object)", ad.Name)
 			}
 
-			if v.checkDirectiveReferenceInType(dd, ad.Type) {
+			// typeにより間接的に自分自身をreferenceしていないかを確認する
+			if v.checkSelfDirectiveReferenceInType(dd, ad.Type) {
 				return fmt.Errorf("argument %s must not contain the use of a directive which references itself", ad.Name)
+			}
+
+			// argument definitionにより間接的に自分自身をreferenceしていないかを確認する
+			if canUseOnArgumentDefinition {
+				for _, adDir := range ad.Directives {
+					if v.checkSelfDirectiveReferenceInDirective(dd, adDir) {
+						return fmt.Errorf("directive %s must not contain the use of a directive which references itself", dd.Name)
+					}
+				}
 			}
 		}
 	}
