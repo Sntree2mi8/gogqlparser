@@ -1,40 +1,12 @@
-package parser
+package validator
 
 import (
 	"fmt"
 	"github.com/Sntree2mi8/gogqlparser/ast"
+	"log"
 	"slices"
 	"strings"
 )
-
-func ValidateTypeSystemExtensionDocument(doc *ast.TypeSystemExtensionDocument) error {
-	return newValidator(doc).validateDirectiveDefinitions()
-}
-
-type validator struct {
-	doc *ast.TypeSystemExtensionDocument
-
-	typeDefs      map[string]ast.TypeDefinition
-	directiveDefs map[string]ast.DirectiveDefinition
-}
-
-func newValidator(doc *ast.TypeSystemExtensionDocument) *validator {
-	typeDefs := make(map[string]ast.TypeDefinition, len(doc.TypeDefinitions))
-	for _, def := range doc.TypeDefinitions {
-		typeDefs[def.TypeName()] = def
-	}
-
-	directiveDefs := make(map[string]ast.DirectiveDefinition, len(doc.DirectiveDefinitions))
-	for _, def := range doc.DirectiveDefinitions {
-		directiveDefs[def.Name] = def
-	}
-
-	return &validator{
-		doc:           doc,
-		typeDefs:      typeDefs,
-		directiveDefs: directiveDefs,
-	}
-}
 
 func (v *validator) validateDirectiveDefinitions() error {
 	var checkReferenceInDirective func(dd ast.DirectiveDefinition, d ast.Directive) (hasReference bool)
@@ -113,7 +85,11 @@ func (v *validator) validateDirectiveDefinitions() error {
 			return isInputType(*t.ListType)
 		}
 
-		td := v.typeDefs[t.NamedType]
+		td, ok := v.typeDefs[t.NamedType]
+		if !ok {
+			log.Println("type not found: ", t.NamedType)
+			return false
+		}
 		switch td.TypeDefinitionKind() {
 		case ast.TypeDefinitionKindScalar, ast.TypeDefinitionKindEnum, ast.TypeDefinitionKindInputObject:
 			return true

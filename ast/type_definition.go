@@ -20,8 +20,7 @@ type TypeDefinition interface {
 }
 
 type ScalarTypeDefinition struct {
-	Description string
-	Name        string
+	Name string
 }
 
 func (d *ScalarTypeDefinition) TypeDefinitionKind() TypeDefinitionKind {

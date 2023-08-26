@@ -171,5 +171,5 @@ func ParseTypeSystemExtensionDocument(src *ast.Source) (doc *ast.TypeSystemExten
 		}
 	}
 
-	return nil, nil
+	return doc, nil
 }

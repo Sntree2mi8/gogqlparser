@@ -1,4 +1,4 @@
-package parser
+package validator
 
 import (
 	"github.com/Sntree2mi8/gogqlparser/ast"
