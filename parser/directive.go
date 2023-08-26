@@ -78,7 +78,7 @@ func (p *parser) parseDirective() (d ast.Directive, err error) {
 	return d, err
 }
 
-func ParsDirectiveLocation(v string) ast.DirectiveLocation {
+func parseDirectiveLocation(v string) ast.DirectiveLocation {
 	switch v {
 	case "QUERY":
 		return ast.DirectiveLocationQuery
@@ -132,7 +132,7 @@ func (p *parser) parseDirectiveLocations() (locs []ast.DirectiveLocation, err er
 		if locationValue, err = p.ReadNameValue(); err != nil {
 			return nil, err
 		}
-		loc := ParsDirectiveLocation(locationValue)
+		loc := parseDirectiveLocation(locationValue)
 		if loc == ast.DirectiveLocationUnknown {
 			return nil, fmt.Errorf("unexpected token %+v", locationValue)
 		}
