@@ -18,12 +18,8 @@ type Query {
 	hello: String
 }
 
-scalar Hoge
-
-directive @schema_directive repeatable on SCHEMA
-directive @arg_directive(arg1: String) on INPUT_OBJECT
-input InputObjectForArgDirective @arg_directive(arg1: "arg1") {
-	field1: String
+enum HogeEnum {
+	FOO
 }
 `
 
@@ -37,7 +33,7 @@ func TestParser_ParseTypeSystem(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = validator.ValidateTypeSystemExtensionDocument(d); err != nil {
+	if _, err = validator.ValidateTypeSystemExtensionDocument(d); err != nil {
 		t.Fatal(err)
 	}
 }
